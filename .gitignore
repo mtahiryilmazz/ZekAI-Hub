@@ -1,0 +1,18 @@
+# iç araçlar / geçici dosyalar
+.zwork/
+.tmp/
+.vendor/
+__pycache__/
+*.pyc
+*.pyo
+
+# kurulum kaydı
+installer/windows/.install.json
+
+# işletim sistemi
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# gecici
+.tmp_*

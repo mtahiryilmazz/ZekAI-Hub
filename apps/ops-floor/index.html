@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZekAI Hub · Ops Floor</title>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<style>
+  :root{
+    --bg:#0A0D13;
+    --surface:#0E131B;
+    --surface-2:#121926;
+    --line:rgba(255,255,255,.07);
+    --line-strong:rgba(255,255,255,.13);
+    --text:#E7ECF3;
+    --muted:#8B98AB;
+    --dim:#63708A;
+    --amber:#E8B45A;
+    --teal:#6FD3C0;
+    --blue:#6FA8FF;
+    --violet:#A78BFA;
+    --green:#7FD48A;
+    --rose:#F08A8A;
+    --radius:10px;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  .app{display:grid;grid-template-rows:56px 1fr 74px;height:100vh}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:18px;padding:0 18px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0D131D,#0A0E15);
+  }
+  .brand{display:flex;align-items:baseline;gap:7px;font-size:14px;letter-spacing:.2px;white-space:nowrap}
+  .brand b{font-weight:650}
+  .brand .mark{
+    width:20px;height:20px;border-radius:6px;align-self:center;
+    background:conic-gradient(from 210deg,#E8B45A,#6FD3C0 55%,#6FA8FF 90%,#E8B45A);
+    box-shadow:0 0 14px rgba(232,180,90,.28);flex:none;
+  }
+  .brand .path{color:var(--dim);font-weight:400}
+  .brand .path em{font-style:normal;color:var(--muted)}
+  .task{
+    display:flex;align-items:center;gap:8px;min-width:0;
+    padding:5px 10px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(255,255,255,.02);color:var(--muted);font-size:12px;
+  }
+  .task .id{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .task .title{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34ch}
+  .spacer{flex:1}
+  .metrics{display:flex;align-items:center;gap:18px}
+  .metric{display:flex;flex-direction:column;line-height:1.15}
+  .metric label{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+  .metric b{font-family:var(--mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .metric b.amber{color:var(--amber)}
+  .mode{
+    display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;
+    font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid rgba(232,180,90,.3);color:var(--amber);background:rgba(232,180,90,.07);
+  }
+  .mode.live{border-color:rgba(111,211,192,.35);color:var(--teal);background:rgba(111,211,192,.08)}
+  .mode .dot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+  .iconbtn{
+    width:32px;height:32px;display:grid;place-items:center;border-radius:8px;
+    border:1px solid var(--line);color:var(--muted);
+  }
+  .iconbtn:hover{color:var(--text);border-color:var(--line-strong);background:rgba(255,255,255,.03)}
+
+  /* ---------- main ---------- */
+  main{display:grid;grid-template-columns:1fr 344px;min-height:0}
+  .stage{position:relative;min-width:0;overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 50% 0%,rgba(60,80,120,.16),transparent 60%),
+      radial-gradient(90% 70% at 50% 100%,rgba(232,180,90,.05),transparent 60%),
+      #080B11;
+  }
+  .stage::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 100% at 50% 45%,transparent 55%,rgba(0,0,0,.55));
+  }
+  #floor{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .hud{
+    position:absolute;left:16px;bottom:14px;z-index:3;display:flex;gap:14px;
+    align-items:center;padding:7px 11px;border:1px solid var(--line);border-radius:9px;
+    background:rgba(10,14,20,.72);backdrop-filter:blur(6px);color:var(--dim);font-size:10.5px;
+  }
+  .hud span{display:flex;align-items:center;gap:6px}
+  .hud i{width:6px;height:6px;border-radius:2px;display:inline-block}
+  .hint{
+    position:absolute;right:16px;bottom:14px;z-index:3;color:var(--dim);font-size:10.5px;
+    border:1px solid var(--line);border-radius:9px;padding:7px 11px;background:rgba(10,14,20,.72);
+  }
+  kbd{
+    font-family:var(--mono);font-size:9.5px;padding:1px 4px;border-radius:4px;
+    border:1px solid var(--line-strong);color:var(--muted);background:rgba(255,255,255,.04);
+  }
+
+  /* ---------- görünüm seçici ---------- */
+  .views{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.02);flex:none}
+  .vbtn{padding:4px 9px;border-radius:6px;font-size:10.5px;color:var(--muted);white-space:nowrap;transition:.15s}
+  .vbtn:hover{color:var(--text)}
+  .vbtn.on{background:rgba(232,180,90,.13);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(232,180,90,.28)}
+
+  /* ---------- dashboard ---------- */
+  .dash{position:absolute;inset:0;overflow:auto;padding:18px 20px 22px;z-index:2}
+  .dash[hidden]{display:none}
+  .dash-head{display:flex;align-items:flex-end;gap:12px;margin-bottom:14px}
+  .dash-head h1{margin:0;font-size:19px;letter-spacing:-.015em;font-weight:650}
+  .dash-head .sub{margin:2px 0 0;color:var(--dim);font-size:11.5px}
+  .live-chip{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--teal);letter-spacing:.06em;text-transform:uppercase}
+  .live-chip i{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
+  .kpi{border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008))}
+  .kpi .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .kpi b{display:block;font-family:var(--mono);font-size:21px;font-weight:600;margin-top:7px;letter-spacing:-.02em}
+  .kpi .s{font-size:10.5px;color:var(--muted);margin-top:3px}
+
+  .dgrid{display:grid;grid-template-columns:1.55fr 1fr;gap:10px;align-items:start}
+  .panel{border:1px solid var(--line);border-radius:12px;padding:13px 14px;
+    background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,.006))}
+  .panel h2{margin:0 0 10px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;display:flex;align-items:center;gap:8px}
+  .panel h2 span{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:0;text-transform:none}
+  .col{display:flex;flex-direction:column;gap:10px;min-width:0}
+
+  .route{width:100%;height:auto;display:block}
+  .route .edge{fill:none;stroke:rgba(140,175,220,.16);stroke-width:1.4}
+  .route .flow{fill:none;stroke:url(#flowg);stroke-width:2;stroke-dasharray:6 10;animation:flow 1.6s linear infinite;opacity:.85}
+  @keyframes flow{to{stroke-dashoffset:-32}}
+  .route .node{fill:#0f1826;stroke:rgba(150,185,225,.28);stroke-width:1.4}
+  .route .node.done{fill:rgba(111,211,192,.16);stroke:rgba(111,211,192,.75)}
+  .route .node.active{fill:rgba(232,180,90,.18);stroke:rgba(232,180,90,.9)}
+  .route .node-lbl{font:600 8.5px ui-sans-serif,"Segoe UI",sans-serif;fill:#c7d2e2;letter-spacing:.05em}
+
+  .qrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-size:11px}
+  .qrow[hidden]{display:none}
+  .qrow:first-of-type{border-top:0}
+  .qrow .tag{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;border:1px solid var(--line-strong);color:var(--muted);flex:none}
+  .qrow .tag.hi{color:#F3C87E;border-color:rgba(232,180,90,.4);background:rgba(232,180,90,.1)}
+  .qrow .who{color:var(--text);font-weight:600;white-space:nowrap}
+  .qrow .what{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .qrow .act{margin-left:auto;display:flex;gap:6px;flex:none}
+  .mini{padding:3px 7px;border-radius:5px;font-size:9.5px;font-weight:600;border:1px solid var(--line-strong);color:var(--muted)}
+  .mini.yes{background:rgba(232,180,90,.16);color:#F3C87E;border-color:rgba(232,180,90,.35)}
+  .mini.no{color:#F0A9A9;border-color:rgba(240,138,138,.3)}
+  .mini:disabled{opacity:.4}
+
+  .health{width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed}
+  .health th{text-align:left;font-weight:500;color:var(--dim);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:0 0 6px}
+  .health td{padding:5px 0;border-top:1px solid var(--line);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .health .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}
+  .health .nm{color:var(--text)}
+
+  .alerts{list-style:none;margin:0;padding:0}
+  .alerts li{display:flex;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+  .alerts li:first-child{border-top:0}
+  .alerts .ic{width:14px;height:14px;border-radius:4px;flex:none;display:grid;place-items:center;font-size:9px}
+  .alerts .ic.w{background:rgba(232,180,90,.15);color:var(--amber)}
+  .alerts .ic.e{background:rgba(240,138,138,.15);color:var(--rose)}
+  .alerts .t{margin-left:auto;font-family:var(--mono);font-size:9px;color:#4E5B72;flex:none}
+
+  #office3d{position:absolute;inset:0;z-index:2}
+  #office3d[hidden]{display:none}
+  .office-hint{position:absolute;left:16px;bottom:14px;z-index:3;color:var(--dim);font-size:10.5px;border:1px solid var(--line);
+    border-radius:9px;padding:7px 11px;background:rgba(10,14,20,.72);backdrop-filter:blur(6px)}
+  .office-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px;z-index:3}
+
+  @media (max-width:1240px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:1000px){ .dgrid{grid-template-columns:1fr} }
+
+  /* ---------- maskot paneli ---------- */
+  .modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(4,7,11,.72);backdrop-filter:blur(8px)}
+  .modal[hidden]{display:none}
+  .modal-box{width:min(880px,92vw);max-height:86vh;display:flex;flex-direction:column;
+    border:1px solid var(--line-strong);border-radius:14px;background:#0d131c;box-shadow:0 30px 80px -30px #000}
+  .modal-box header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .modal-box h2{margin:0;font-size:14px;font-weight:600}
+  .modal-box header .x{margin-left:auto;width:28px;height:28px;border-radius:7px;color:var(--muted);font-size:16px}
+  .modal-box header .x:hover{background:rgba(255,255,255,.06);color:var(--text)}
+  .mbody{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:16px;overflow:auto}
+  .mbody h3{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:0 0 10px;
+    display:flex;align-items:center;gap:8px;font-weight:600}
+  .role{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+  .role:first-of-type{border-top:0}
+  .role .rn{font-size:11.5px;width:104px;color:var(--text);flex:none}
+  .role select{flex:1;min-width:0;background:#111926;color:var(--text);border:1px solid var(--line-strong);
+    border-radius:6px;padding:5px 6px;font-size:11px}
+  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+  .cc{border:1px solid var(--line);border-radius:9px;padding:9px;background:rgba(255,255,255,.02);position:relative}
+  .cc .dot{width:22px;height:22px;border-radius:50%;display:block;margin-bottom:6px;
+    border:1px solid rgba(255,255,255,.18);box-shadow:0 0 12px -2px currentColor}
+  .cc .nm{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc .sp{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+  .cc .del{position:absolute;top:6px;right:7px;color:#4E5B72;font-size:11px}
+  .cc .del:hover{color:var(--rose)}
+  .mform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .mform input,.mform select{background:#111926;border:1px solid var(--line-strong);border-radius:6px;color:var(--text);
+    padding:5px 7px;font-size:11px;min-width:0}
+  .mform .wide{grid-column:1/-1}
+  .modal-box footer{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
+  .modal-box footer .note{font-size:10px;color:var(--dim)}
+  .modal-box footer .btn{margin-left:auto;flex:none;padding:6px 14px}
+
+  /* ---------- görev konsolu ---------- */
+  .console{margin-top:10px}
+  .chat{display:flex;flex-direction:column;gap:8px;max-height:210px;overflow:auto;margin-bottom:10px}
+  .chat:empty::before{content:"Henüz istem yok · Ayarlar'dan sağlayıcı seçin, mock ile hemen deneyin.";
+    color:var(--dim);font-size:11px}
+  .msg{max-width:78%;padding:8px 10px;border-radius:9px;font-size:11.5px;line-height:1.5;
+    white-space:pre-wrap;word-break:break-word}
+  .msg.user{align-self:flex-end;background:rgba(232,180,90,.12);border:1px solid rgba(232,180,90,.28);color:#F1DFC2}
+  .msg.bot{align-self:flex-start;background:rgba(111,168,255,.08);border:1px solid rgba(111,168,255,.22);color:#C9D7E8}
+  .msg.err{align-self:flex-start;background:rgba(240,138,138,.1);border:1px solid rgba(240,138,138,.3);color:#F0B3B3}
+  .composer{display:flex;gap:8px;align-items:flex-end}
+  .composer textarea{flex:1;min-height:38px;max-height:120px;resize:vertical;background:#111926;
+    border:1px solid var(--line-strong);border-radius:8px;color:var(--text);padding:9px 10px;font:12px/1.4 inherit}
+  .composer .btn{flex:none;padding:9px 16px}
+
+  /* ---------- bağlantı ayarları ---------- */
+  .setgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px;overflow:auto}
+  .setgrid label{display:flex;flex-direction:column;gap:5px;font-size:9.5px;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--dim)}
+  .setgrid input,.setgrid select{background:#111926;border:1px solid var(--line-strong);border-radius:7px;
+    color:var(--text);padding:7px 9px;font-size:12px;text-transform:none;letter-spacing:0}
+  .setgrid .wide{grid-column:1/-1}
+  .setnote{grid-column:1/-1;font-size:10.5px;color:var(--dim);line-height:1.6;
+    border-top:1px solid var(--line);padding-top:10px}
+  .setnote code{font-family:var(--mono);color:var(--muted)}
+  .setnote b{color:var(--muted);font-weight:600}
+  @media (max-width:820px){ .mbody{grid-template-columns:1fr} }
+
+  /* flat / accessible view */
+  .flat{
+    position:absolute;inset:0;z-index:4;padding:22px;overflow:auto;
+    background:linear-gradient(180deg,#080B11,#0A0F17);
+  }
+  .flat[hidden]{display:none}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .flat h2{margin:0 0 4px;font-size:14px;font-weight:600}
+  .flat p.sub{margin:0 0 18px;color:var(--dim);font-size:11.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .card{
+    border:1px solid var(--line);border-radius:11px;padding:13px;
+    background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.008));
+  }
+  .card header{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .card .avatar{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+    font-size:11px;font-weight:700;color:#0B0F16}
+  .card .name{font-weight:600;font-size:12.5px}
+  .card .zone{margin-left:auto;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+  .card .state{font-size:11px;color:var(--muted);min-height:32px}
+  .card .meta{display:flex;justify-content:space-between;margin-top:10px;padding-top:9px;
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+  /* ---------- rail ---------- */
+  .rail{border-left:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+  .rail-head{display:flex;align-items:center;gap:8px;padding:13px 14px 11px;border-bottom:1px solid var(--line)}
+  .rail-head h2{margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .rail-head .count{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--dim)}
+  .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 rgba(111,211,192,.5);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(111,211,192,.45)}70%{box-shadow:0 0 0 7px rgba(111,211,192,0)}100%{box-shadow:0 0 0 0 rgba(111,211,192,0)}}
+  .feed{list-style:none;margin:0;padding:6px 0 10px;overflow:auto;flex:1;min-height:0;scrollbar-width:thin}
+  .feed li{display:grid;grid-template-columns:44px 1fr auto;gap:8px;padding:7px 14px;align-items:baseline;
+    border-left:2px solid transparent;animation:slide .28s ease}
+  @keyframes slide{from{transform:translateY(-4px)}to{transform:none}}
+  .feed li:hover{background:rgba(255,255,255,.02)}
+  .feed .t{font-family:var(--mono);font-size:9.5px;color:#4E5B72}
+  .feed .m{font-size:11.5px;color:#B9C4D4;min-width:0;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .feed .m b{color:var(--text);font-weight:600}
+  .feed .m .who{font-weight:600}
+  .feed .c{font-family:var(--mono);font-size:9.5px;color:#54617A;white-space:nowrap}
+  .feed li.warn{border-left-color:rgba(232,180,90,.55);background:rgba(232,180,90,.045)}
+  .feed li.err{border-left-color:rgba(240,138,138,.6);background:rgba(240,138,138,.05)}
+  .feed li.ok{border-left-color:rgba(111,211,192,.5)}
+  .empty{padding:26px 14px;color:var(--dim);font-size:11.5px;text-align:center}
+
+  .approval{
+    flex:none;
+    position:fixed;right:16px;bottom:88px;width:320px;z-index:40;
+    margin:0;border:1px solid rgba(232,180,90,.4);border-radius:11px;
+    background:linear-gradient(180deg,rgba(232,180,90,.10),rgba(232,180,90,.03));
+    box-shadow:0 0 0 1px rgba(232,180,90,.06),0 10px 30px -18px rgba(232,180,90,.6);
+    padding:12px;animation:slide .3s ease;
+  }
+  .approval[hidden]{display:none}
+  @media (max-width:820px){
+    .approval{left:12px;right:12px;width:auto;bottom:96px}
+  }
+  .approval .top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .approval .tag{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#F3C87E;
+    background:rgba(232,180,90,.14);border:1px solid rgba(232,180,90,.3);padding:2px 6px;border-radius:5px}
+  .approval .risk{margin-left:auto;font-size:9px;color:#F0A9A9;letter-spacing:.06em}
+  .approval h3{margin:0 0 6px;font-size:12.5px;font-weight:600}
+  .approval p{margin:0 0 10px;font-size:11px;color:#B7A88E;line-height:1.5}
+  .approval code{font-family:var(--mono);font-size:10.5px;color:#E9D3AC;background:rgba(0,0,0,.28);padding:1px 5px;border-radius:4px}
+  .approval .actions{display:flex;gap:8px}
+  .btn{flex:1;padding:7px 10px;border-radius:7px;font-size:11.5px;font-weight:600;
+    border:1px solid var(--line-strong);background:rgba(255,255,255,.04);transition:.15s}
+  .btn:hover{background:rgba(255,255,255,.08)}
+  .btn.primary{background:linear-gradient(180deg,#F0C580,#DFA54A);color:#20160A;border-color:rgba(0,0,0,.2)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.danger{color:#F2A7A7;border-color:rgba(240,138,138,.3)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* ---------- footer ---------- */
+  .pipeline{
+    display:flex;align-items:center;gap:16px;padding:0 18px;border-top:1px solid var(--line);
+    background:linear-gradient(0deg,#0B1018,#0A0E15);
+  }
+  .steps{display:flex;align-items:center;gap:0;flex:1;min-width:0}
+  .step{display:flex;align-items:center;gap:8px;padding-right:14px;position:relative;white-space:nowrap}
+  .step .n{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;
+    font-size:9.5px;font-family:var(--mono);border:1px solid var(--line-strong);color:var(--dim);flex:none}
+  .step .lbl{font-size:10.5px;color:var(--dim);letter-spacing:.02em}
+  .step .bar{width:26px;height:1px;background:var(--line);margin-left:10px}
+  .step:last-child .bar{display:none}
+  .step.active .n{border-color:var(--amber);color:var(--amber);box-shadow:0 0 12px rgba(232,180,90,.25)}
+  .step.active .lbl{color:var(--text)}
+  .step.done .n{border-color:rgba(111,211,192,.5);color:var(--teal);background:rgba(111,211,192,.08)}
+  .step.done .lbl{color:var(--muted)}
+  .budget{width:190px;flex:none}
+  .budget .row{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);
+    letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+  .budget .row b{font-family:var(--mono);color:var(--muted);letter-spacing:0}
+  .track{height:4px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+  .track i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6FD3C0,#E8B45A);transition:width .5s ease}
+  .controls{display:flex;gap:6px;flex:none}
+  .ctl{padding:5px 9px;border-radius:7px;border:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+  .ctl:hover{color:var(--text);border-color:var(--line-strong)}
+  .ctl.on{color:var(--amber);border-color:rgba(232,180,90,.35);background:rgba(232,180,90,.07)}
+
+  @media (max-width:1080px){
+    main{grid-template-columns:1fr 300px}
+    .task{display:none}
+    .metrics .metric:nth-child(3){display:none}
+  }
+  @media (max-width:820px){
+    main{grid-template-columns:1fr}
+    .rail{display:none}
+    .pipeline{flex-wrap:wrap;height:auto;padding:10px 14px;gap:10px}
+    .steps{overflow:auto}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark"></span><b>ZekAI</b><span class="path">Hub <em>/</em> Ops Floor</span>
+    </div>
+
+    <div class="views" role="tablist" aria-label="Görünüm seçici">
+      <button class="vbtn on" data-view="dash" role="tab" aria-selected="true">Panel</button>
+      <button class="vbtn" data-view="floor" role="tab" aria-selected="false">Saha</button>
+      <button class="vbtn" data-view="office" role="tab" aria-selected="false">Ofis 3D</button>
+      <button class="vbtn" data-view="list" role="tab" aria-selected="false">Liste</button>
+    </div>
+    <button class="ctl" id="btnMascot" title="Maskot paneli (M)">Maskot</button>
+
+    <div class="task">
+      <span class="id" id="taskId">tsk_7f21</span>
+      <span class="title" id="taskTitle">Pazar raporunu güncelle ve özetle</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="metrics">
+      <div class="metric"><label>Maliyet</label><b class="amber" id="cost">$0.0000</b></div>
+      <div class="metric"><label>Token</label><b id="tokens">0</b></div>
+      <div class="metric"><label>Aktif model</label><b id="model">T2 · Sonnet 5.5</b></div>
+      <div class="mode" id="mode"><span class="dot"></span><span id="modeText">Simülasyon</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" id="stage">
+      <div class="dash" id="dash" hidden>
+        <div class="dash-head">
+          <div>
+            <h1>AI İş Gücü Komuta Merkezi</h1>
+            <p class="sub">Yönlendirme, kalite, onay, maliyet ve ajan sağlığı — tek ekranda.</p>
+          </div>
+          <div class="live-chip"><i></i>Canlı</div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="k">Toplam harcama</div><b id="kSpend">$0.0000</b><div class="s" id="kSpendSub">0 olay · 0 token</div></div>
+          <div class="kpi"><div class="k">Doğrulama geçişi</div><b id="kVerify">—</b><div class="s" id="kVerifySub">tamamlanan görev yok</div></div>
+          <div class="kpi"><div class="k">Onay oranı</div><b id="kApproval">—</b><div class="s" id="kApprovalSub">bekleyen onay yok</div></div>
+          <div class="kpi"><div class="k">Aktif ajan</div><b id="kActive">0</b><div class="s" id="kActiveSub">6 ajan · 4 bölge</div></div>
+        </div>
+
+        <div class="dgrid">
+          <div class="col">
+            <section class="panel">
+              <h2>Akış haritası <span id="routeSub">son görev</span></h2>
+              <svg class="route" viewBox="0 0 560 150" role="img" aria-label="Görev akış haritası">
+                <defs>
+                  <linearGradient id="flowg" x1="0" x2="1">
+                    <stop offset="0" stop-color="#6FD3C0"/><stop offset="0.55" stop-color="#6FA8FF"/><stop offset="1" stop-color="#E8B45A"/>
+                  </linearGradient>
+                </defs>
+                <path class="edge" d="M56 78 C 110 78 122 78 168 78 S 236 78 280 78 S 348 78 392 78 S 460 78 504 78"/>
+                <path class="flow" d="M56 78 C 110 78 122 78 168 78 S 236 78 280 78 S 348 78 392 78 S 460 78 504 78"/>
+                <path class="edge" d="M168 78 C 200 34 250 122 280 78" opacity=".45"/>
+                <g id="rnodes">
+                  <g><circle class="node" id="rn0" cx="56" cy="78" r="12"/><text class="node-lbl" x="56" y="104" text-anchor="middle">ANLA</text></g>
+                  <g><circle class="node" id="rn1" cx="168" cy="78" r="12"/><text class="node-lbl" x="168" y="104" text-anchor="middle">PLANLA</text></g>
+                  <g><circle class="node" id="rn2" cx="280" cy="78" r="12"/><text class="node-lbl" x="280" y="104" text-anchor="middle">YÜRÜT</text></g>
+                  <g><circle class="node" id="rn3" cx="392" cy="78" r="12"/><text class="node-lbl" x="392" y="104" text-anchor="middle">DOĞRULA</text></g>
+                  <g><circle class="node" id="rn4" cx="504" cy="78" r="12"/><text class="node-lbl" x="504" y="104" text-anchor="middle">TESLİM</text></g>
+                </g>
+              </svg>
+            </section>
+
+            <section class="panel">
+              <h2>Maliyet nabzı <span id="costSub">$0.0000</span></h2>
+              <svg viewBox="0 0 560 110" preserveAspectRatio="none" style="width:100%;height:110px;display:block" role="img" aria-label="Kümülatif maliyet">
+                <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#6FA8FF" stop-opacity=".35"/><stop offset="1" stop-color="#6FA8FF" stop-opacity="0"/>
+                </linearGradient></defs>
+                <path id="costArea" fill="url(#cg)" d=""/>
+                <path id="costLine" fill="none" stroke="#6FA8FF" stroke-width="1.8" d=""/>
+              </svg>
+            </section>
+          </div>
+
+          <div class="col">
+            <section class="panel">
+              <h2>Onay kuyruğu <span id="qCount">0</span></h2>
+              <div id="qBody">
+                <div class="qrow" id="qEmpty"><span class="what">Bekleyen onay yok.</span></div>
+                <div class="qrow" id="qItem" hidden>
+                  <span class="tag hi" id="qTag">Yüksek</span>
+                  <span class="who" id="qWho">Uygulayıcı</span>
+                  <span class="what" id="qWhat">—</span>
+                  <span class="act"><button class="mini yes" id="qYes">Onayla</button><button class="mini no" id="qNo">Reddet</button></span>
+                </div>
+                <div class="qrow" id="qLast" hidden><span class="tag" id="qLastTag">Karar</span><span class="what" id="qLastMsg">—</span></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <h2>Ajan sağlığı <span>6</span></h2>
+              <table class="health"><thead><tr><th style="width:37%">Ajan</th><th style="width:24%">Durum</th><th>Son olay</th></tr></thead><tbody id="healthRows"></tbody></table>
+            </section>
+
+            <section class="panel">
+              <h2>Uyarılar <span id="alertCount">0</span></h2>
+              <ul class="alerts" id="alertList"></ul>
+            </section>
+          </div>
+        </div>
+
+        <section class="panel console">
+          <h2>Görev konsolu <span id="chatState">mock · yapılandırılmadı</span>
+            <button class="mini" id="btnSettings">Bağlantı ayarları</button>
+          </h2>
+          <div class="chat" id="chatLog"></div>
+          <div class="composer">
+            <textarea id="prompt" rows="1" placeholder="Bir görev yazın… (Enter gönder · Shift+Enter satır)"></textarea>
+            <button class="btn primary" id="btnSend">Gönder</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="office3d" hidden></div>
+      <div class="office-hint" id="officeHint" hidden>Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: sıfırla</div>
+
+      <canvas id="floor" aria-label="Ajan ofisi görselleştirmesi"></canvas>
+
+      <div class="hud" aria-hidden="true">
+        <span><i style="background:var(--teal)"></i>Planlama</span>
+        <span><i style="background:var(--blue)"></i>Saha</span>
+        <span><i style="background:var(--violet)"></i>İnceleme</span>
+        <span><i style="background:var(--amber)"></i>Operasyon</span>
+      </div>
+      <div class="hint"><kbd>Space</kbd> duraklat · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> hız · <kbd>K</kbd> kart · <kbd>L</kbd> canlı</div>
+
+      <p class="sr-only" id="srSummary" aria-live="polite"></p>
+
+      <div class="flat" id="flat" hidden>
+        <h2>Ekip durumu</h2>
+        <p class="sub">Aynı olay hattının erişilebilir, düz görünümü — sahne kapalıyken de tam bilgi.</p>
+        <div class="cards" id="cards"></div>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <div class="rail-head">
+        <span class="pulse"></span>
+        <h2>Canlı akış</h2>
+        <span class="count" id="feedCount">0 olay</span>
+      </div>
+      <ul class="feed" id="feed"><li class="empty">Olay bekleniyor…</li></ul>
+    </aside>
+  </main>
+
+  <div class="approval" id="approval" hidden role="alertdialog" aria-labelledby="apTitle">
+    <div class="top">
+      <span class="tag">Onay gerekli</span>
+      <span class="risk" id="apRisk">YÜKSEK RİSK</span>
+    </div>
+    <h3 id="apTitle">Dosya yazma izni</h3>
+    <p id="apBody">Ajan <code>reports/2026-Q4.md</code> dosyasının üzerine yazmak istiyor. Onay olmadan eylem çalışmaz.</p>
+    <div class="actions">
+      <button class="btn primary" id="apYes">Onayla</button>
+      <button class="btn danger" id="apNo">Reddet</button>
+    </div>
+  </div>
+
+  <footer class="pipeline">
+    <div class="steps" id="steps"></div>
+    <div class="budget">
+      <div class="row"><span>Görev bütçesi</span><b id="budgetText">$0.000 / $0.500</b></div>
+      <div class="track"><i id="budgetBar"></i></div>
+    </div>
+    <div class="controls">
+      <button class="ctl" id="btnPause">Duraklat</button>
+      <button class="ctl" id="btnSpeed">1×</button>
+      <button class="ctl" id="btnLive">Canlı</button>
+    </div>
+  </footer>
+</div>
+
+<div class="modal" id="mascotModal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal-box">
+    <header>
+      <h2 id="mTitle">Maskot paneli</h2>
+      <button class="x" id="mClose" aria-label="Kapat">✕</button>
+    </header>
+    <div class="mbody">
+      <section>
+        <h3>Görev rolleri — karakter ataması</h3>
+        <div id="roleList"></div>
+      </section>
+      <section>
+        <h3>Karakter kataloğu <span id="catCount" style="color:var(--dim);font-family:var(--mono)"></span></h3>
+        <div class="cat" id="catalogList"></div>
+        <div class="mform">
+          <input id="nName" placeholder="Karakter adı" maxlength="24" />
+          <select id="nSpecies">
+            <option value="kedi">Kedi</option>
+            <option value="kopek">Köpek</option>
+            <option value="kus">Kuş</option>
+          </select>
+          <select id="nAcc">
+            <option value="none">Aksesuar yok</option>
+            <option value="bandana">Bandana</option>
+            <option value="hat">Şapka</option>
+            <option value="hair">Dikenli saç</option>
+          </select>
+          <input id="nColor" type="color" value="#E8B45A" title="Renk" />
+          <input id="nModel" class="wide" placeholder="Model URL (.glb / .gltf) — opsiyonel" />
+          <button class="btn primary wide" id="nAdd">Kataloğa ekle</button>
+        </div>
+      </section>
+    </div>
+    <footer>
+      <span class="note">Değişiklikler anında uygulanır ve bu tarayıcıda saklanır.</span>
+      <button class="btn primary" id="mApply">Sahneye uygula</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal" hidden role="dialog" aria-modal="true" aria-labelledby="sTitle">
+  <div class="modal-box" style="width:min(640px,92vw)">
+    <header>
+      <h2 id="sTitle">Bağlantı ayarları</h2>
+      <button class="x" id="sClose" aria-label="Kapat">✕</button>
+    </header>
+    <div class="setgrid">
+      <label>Sağlayıcı
+        <select id="sProvider">
+          <option value="mock">Mock (anahtarsız test)</option>
+          <option value="openai">OpenAI / uyumlu</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+      </label>
+      <label>Model
+        <input id="sModel" placeholder="gpt-4o-mini" />
+      </label>
+      <label class="wide">Base URL (opsiyonel)
+        <input id="sBase" placeholder="https://api.openai.com/v1" />
+      </label>
+      <label class="wide">API anahtarı
+        <input id="sKey" type="password" placeholder="sk-... (kayıtlıysa boş bırakın)" autocomplete="off" />
+      </label>
+      <div class="setnote">
+        Anahtar yalnızca bu bilgisayardaki <code>~/.zekai/config.json</code> dosyasında saklanır;
+        tarayıcıya geri döndürülmez ve repoya girmez. Üretimde Secret Vault / OS keychain kullanılmalıdır.
+        <br />Mevcut durum: <b id="sStatus">—</b>
+      </div>
+    </div>
+    <footer>
+      <button class="mini" id="sClear">Anahtarı sil</button>
+      <button class="btn primary" id="sSave">Kaydet</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   0. Sabitler ve görsel ayarlar
+   ===================================================================== */
+const TW = 64, TH = 32;          // izometrik karo boyutu
+const W = 18, H = 14;            // dünya (karo)
+const WALL_H = 1.7;              // duvar yüksekliği (karo)
+const BUDGET = 0.5;
+
+const COLORS = {
+  bg: "#080B11",
+  wall: "#0D141E",
+  wallTop: "#16202E",
+  floorA: "#17202F",
+  floorB: "#131A27",
+  grid: "rgba(180,205,235,0.05)",
+  deskTop: "#2A3547",
+  deskLeft: "#1D2634",
+  deskRight: "#171E29",
+  edge: "rgba(150,180,220,0.18)",
+};
+
+const AGENTS = [
+  { id: "supervisor", name: "Denetçi",   role: "Orkestratör", zone: "ops",    color: "#E8B45A", letter: "D", desk: [10.4, 8.2], species: "kedi" },
+  { id: "planner",    name: "Planlayıcı",role: "Plan",        zone: "plan",   color: "#6FD3C0", letter: "P", desk: [1.7, 1.8], species: "kus" },
+  { id: "researcher", name: "Araştırmacı",role:"Kaynak",      zone: "plan",   color: "#6FA8FF", letter: "A", desk: [4.9, 1.8], species: "kedi" },
+  { id: "analyst",    name: "Analist",   role: "Analiz",      zone: "field",  color: "#A78BFA", letter: "N", desk: [10.6, 1.8], species: "kopek" },
+  { id: "builder",    name: "Uygulayıcı",role: "Kod",         zone: "field",  color: "#7FD48A", letter: "U", desk: [13.9, 1.8], species: "kopek" },
+  { id: "reviewer",   name: "Gözden Geçiren", role: "Doğrulama", zone: "review", color: "#F08A8A", letter: "G", desk: [2.4, 8.4], species: "kus" },
+];
+
+const ZONES = [
+  { id: "plan",   label: "PLANLAMA",   x: 0.5, y: 0.5, w: 7.9, h: 6.0, tint: "rgba(111,211,192,0.07)", line: "rgba(111,211,192,0.30)" },
+  { id: "field",  label: "SAHA",       x: 9.6, y: 0.5, w: 7.9, h: 6.0, tint: "rgba(111,168,255,0.07)", line: "rgba(111,168,255,0.30)" },
+  { id: "review", label: "İNCELEME",   x: 0.5, y: 7.5, w: 7.9, h: 6.0, tint: "rgba(167,139,250,0.07)", line: "rgba(167,139,250,0.30)" },
+  { id: "ops",    label: "OPERASYON",  x: 9.6, y: 7.5, w: 7.9, h: 6.0, tint: "rgba(232,180,90,0.07)", line: "rgba(232,180,90,0.30)" },
+];
+
+const PIPELINE = ["Anla", "Planla", "Yürüt", "Doğrula", "Teslim"];
+
+/* Maskot kataloğu — özgün arketipler; kullanıcı kendi karakterini ekleyebilir. */
+const DEFAULT_CATALOG = [
+  { id: "c_kedi",    name: "Kedi Usta",  species: "kedi",  accessory: "none",    color: "#E8B45A" },
+  { id: "c_kus",     name: "Kanat",      species: "kus",   accessory: "none",    color: "#6FD3C0" },
+  { id: "c_mavi",    name: "Mavi Kedi",  species: "kedi",  accessory: "none",    color: "#6FA8FF" },
+  { id: "c_sadik",   name: "Sadık",      species: "kopek", accessory: "none",    color: "#A78BFA" },
+  { id: "c_ninja",   name: "Ninja",      species: "kedi",  accessory: "bandana", color: "#7FD48A" },
+  { id: "c_korsan",  name: "Korsan",     species: "kopek", accessory: "hat",     color: "#F08A8A" },
+  { id: "c_savasci", name: "Savaşçı",    species: "kedi",  accessory: "hair",    color: "#F0A04A" },
+];
+const DEFAULT_CAST = {
+  supervisor: "c_kedi", planner: "c_kus", researcher: "c_mavi",
+  analyst: "c_sadik", builder: "c_ninja", reviewer: "c_korsan",
+};
+
+/* =====================================================================
+   1. Durum
+   ===================================================================== */
+const state = {
+  agents: {},
+  cost: 0,
+  tokens: 0,
+  events: 0,
+  paused: false,
+  speed: 1,
+  live: false,
+  flat: false,
+  pendingApproval: null,
+  taskId: "tsk_7f21",
+  pipeline: ["idle", "idle", "idle", "idle", "idle"],
+  zonePressure: {},
+  log: [],
+  costSeries: [0],
+  approvals: { required: 0, approved: 0, rejected: 0 },
+  lastDecision: null,
+  catalog: (typeof DEFAULT_CATALOG !== "undefined" ? DEFAULT_CATALOG : []).map((c) => ({ ...c })),
+  cast: (typeof DEFAULT_CAST !== "undefined" ? DEFAULT_CAST : {}),
+};
+
+for (const a of AGENTS) {
+  const chair = [a.desk[0] + 0.95, a.desk[1] + 1.5];
+  state.agents[a.id] = {
+    ...a,
+    x: chair[0], y: chair[1], tx: chair[0], ty: chair[1],
+    home: chair.slice(),
+    status: "boşta",
+    msg: "",
+    msgUntil: 0,
+    moving: false,
+    t: Math.random() * 10,
+    lastEvent: "—",
+    spend: 0,
+    steps: 0,
+    species: a.species || "kedi",
+    accessory: "none",
+    charName: a.name,
+  };
+  state.zonePressure[a.zone] = 0;
+}
+
+loadCast();
+applyCast(false);
+
+/* =====================================================================
+   2. İzometrik projeksiyon + sahne
+   ===================================================================== */
+const canvas = document.getElementById("floor");
+const ctx = canvas.getContext("2d", { alpha: true });
+const stage = document.getElementById("stage");
+
+const view = { w: 0, h: 0, scale: 1, ox: 0, oy: 0, as: 1 };
+let bg = document.createElement("canvas");
+let bgCtx = bg.getContext("2d");
+
+const proj = (x, y, z = 0) => {
+  const wx = (x - y) * (TW / 2);
+  const wy = (x + y) * (TH / 2) - z * TH;
+  return [wx * view.scale + view.ox, wy * view.scale + view.oy];
+};
+
+function resize() {
+  const r = stage.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(r.width));
+  const h = Math.max(280, Math.floor(r.height));
+  view.w = w; view.h = h;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const diamondW = (W + H) * (TW / 2);
+  const diamondH = (W + H) * (TH / 2) + WALL_H * TH;
+  view.scale = Math.max(0.55, Math.min(1.45, Math.min((w - 64) / diamondW, (h - 60) / diamondH)));
+  view.ox = w / 2;
+  view.oy = h / 2 - ((W + H) * TH / 4) * view.scale + 18;
+  view.as = Math.max(0.85, Math.min(1.3, view.scale));
+
+  bg.width = canvas.width;
+  bg.height = canvas.height;
+  bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  paintStatic();
+}
+
+function poly(c, pts, fill, stroke, lw = 1) {
+  c.beginPath();
+  c.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+  c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); }
+  if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(); }
+}
+
+/* Statik katman: zemin, duvarlar, bölge halıları, etiketler */
+function paintStatic() {
+  const c = bgCtx;
+  c.clearRect(0, 0, view.w, view.h);
+
+  // duvarlar (arkada)
+  poly(c, [proj(0, 0, 0), proj(W, 0, 0), proj(W, 0, WALL_H), proj(0, 0, WALL_H)],
+       "rgba(26,37,53,0.98)", "rgba(140,175,220,0.16)");
+  poly(c, [proj(0, 0, 0), proj(0, H, 0), proj(0, H, WALL_H), proj(0, 0, WALL_H)],
+       "rgba(19,27,40,0.98)", "rgba(140,175,220,0.12)");
+  // süpürgelik
+  c.strokeStyle = "rgba(150,185,225,0.16)";
+  c.lineWidth = 1.2;
+  c.beginPath();
+  const a0 = proj(0, 0, 0), a1 = proj(W, 0, 0), a2 = proj(0, H, 0);
+  c.moveTo(a1[0], a1[1]); c.lineTo(a0[0], a0[1]); c.lineTo(a2[0], a2[1]);
+  c.stroke();
+
+  // duvar paneli (çok hafif ışık)
+  const g = c.createLinearGradient(0, 0, 0, view.h * 0.5);
+  g.addColorStop(0, "rgba(232,180,90,0.05)");
+  g.addColorStop(1, "rgba(232,180,90,0)");
+  poly(c, [proj(6.2, 0, 0.35), proj(11.4, 0, 0.35), proj(11.4, 0, 1.35), proj(6.2, 0, 1.35)], g);
+
+  // zemin karoları
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) {
+      const pts = [proj(x, y), proj(x + 1, y), proj(x + 1, y + 1), proj(x, y + 1)];
+      poly(c, pts, (x + y) % 2 ? COLORS.floorA : COLORS.floorB, COLORS.grid, 0.5);
+    }
+  }
+
+  // bölge halıları
+  for (const z of ZONES) {
+    const pts = [proj(z.x, z.y), proj(z.x + z.w, z.y), proj(z.x + z.w, z.y + z.h), proj(z.x, z.y + z.h)];
+    poly(c, pts, z.tint, z.line, 1.2);
+    // ön kenarda etiket: mobilya örtmez
+    const lbl = proj(z.x + 0.45, z.y + z.h - 0.5);
+    c.font = `600 ${Math.round(9.5 * view.as)}px ui-sans-serif, "Segoe UI", sans-serif`;
+    c.textBaseline = "middle";
+    const text = z.label;
+    const tw = c.measureText(text).width;
+    rrect(c, lbl[0] - 6, lbl[1] - 8, tw + 16, 16, 4);
+    c.fillStyle = "rgba(8,12,18,0.72)";
+    c.fill();
+    c.strokeStyle = z.line;
+    c.lineWidth = 0.8;
+    c.stroke();
+    c.fillStyle = z.line.replace("0.30", "0.95");
+    c.fillText(text, lbl[0] + 2, lbl[1] + 0.5);
+  }
+
+  // zemin dış çerçevesi
+  poly(c, [proj(0, 0), proj(W, 0), proj(W, H), proj(0, H)], null, "rgba(150,185,225,0.18)", 1.2);
+
+  // zemin üzerinde hafif vinyet
+  const rg = c.createRadialGradient(view.w / 2, view.h * 0.46, 40, view.w / 2, view.h * 0.46, Math.max(view.w, view.h) * 0.72);
+  rg.addColorStop(0, "rgba(0,0,0,0)");
+  rg.addColorStop(1, "rgba(0,0,0,0.55)");
+  c.fillStyle = rg;
+  c.fillRect(0, 0, view.w, view.h);
+}
+
+/* =====================================================================
+   3. Mobilya çizimi
+   ===================================================================== */
+function face(c, p, fill, stroke) {
+  poly(c, p, fill, stroke || "rgba(0,0,0,0.28)", 0.8);
+}
+
+function isoBox(c, x, y, w, d, z0, h, top, left, right, stroke) {
+  const t = [proj(x, y, z0 + h), proj(x + w, y, z0 + h), proj(x + w, y + d, z0 + h), proj(x, y + d, z0 + h)];
+  const l = [proj(x, y + d, z0 + h), proj(x + w, y + d, z0 + h), proj(x + w, y + d, z0), proj(x, y + d, z0)];
+  const r = [proj(x + w, y, z0 + h), proj(x + w, y + d, z0 + h), proj(x + w, y + d, z0), proj(x + w, y, z0)];
+  face(c, l, left, stroke);
+  face(c, r, right, stroke);
+  face(c, t, top, "rgba(200,225,255,0.16)");
+}
+
+function drawDesk(c, a, active) {
+  const [x, y] = a.desk;
+  const w = 1.9, d = 0.95, h = 0.62;
+  isoBox(c, x, y, w, d, 0, h, COLORS.deskTop, COLORS.deskLeft, COLORS.deskRight);
+
+  // çalışırken masa lambası ışığı
+  if (active) {
+    const gp = proj(x + 0.9, y + 0.25, h + 0.5);
+    const rg = c.createRadialGradient(gp[0], gp[1], 2, gp[0], gp[1], 58 * view.as);
+    rg.addColorStop(0, "rgba(232,180,90,0.22)");
+    rg.addColorStop(1, "rgba(232,180,90,0)");
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    c.fillStyle = rg;
+    c.beginPath(); c.arc(gp[0], gp[1], 58 * view.as, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+
+  // monitör
+  isoBox(c, x + 0.6, y + 0.12, 0.62, 0.1, h, 0.34, "#2B3748", "#1B2431", "#161E29");
+  c.save();
+  const s0 = proj(x + 0.62, y + 0.13, h + 0.3);
+  const s1 = proj(x + 1.2, y + 0.13, h + 0.3);
+  c.beginPath();
+  c.moveTo(s0[0], s0[1]); c.lineTo(s1[0], s1[1]);
+  c.lineTo(s1[0], s1[1] - 13 * view.as); c.lineTo(s0[0], s0[1] - 13 * view.as);
+  c.closePath();
+  c.fillStyle = active ? "rgba(111,211,192,0.55)" : "rgba(90,120,160,0.18)";
+  c.fill();
+  c.restore();
+
+  // klavye + fincan
+  isoBox(c, x + 0.55, y + 0.42, 0.6, 0.22, h, 0.04, "#2E3A4C", "#1E2734", "#1A2230");
+  if (active) {
+    const cup = proj(x + 1.55, y + 0.36, h + 0.05);
+    c.beginPath();
+    c.arc(cup[0], cup[1], 3.2 * view.as, 0, Math.PI * 2);
+    c.fillStyle = "rgba(232,180,90,0.85)";
+    c.fill();
+  }
+
+  // sandalye
+  isoBox(c, x + 0.55, y + d + 0.28, 0.7, 0.55, 0, 0.42, "#1C2532", "#161D28", "#131A24");
+}
+
+function drawPlant(c, x, y) {
+  isoBox(c, x, y, 0.34, 0.34, 0, 0.22, "#2A3341", "#1B2331", "#161D29");
+  const p = proj(x + 0.17, y + 0.17, 0.22);
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2;
+    const r = 7 * view.as;
+    c.beginPath();
+    c.ellipse(p[0] + Math.cos(ang) * r * 0.55, p[1] - 7 * view.as + Math.sin(ang) * r * 0.4,
+              r * 0.75, r * 0.55, ang, 0, Math.PI * 2);
+    c.fillStyle = i % 2 ? "rgba(94,150,120,0.55)" : "rgba(72,124,100,0.45)";
+    c.fill();
+  }
+}
+
+function drawRack(c, x, y) {
+  isoBox(c, x, y, 0.8, 0.6, 0, 1.25, "#1D2634", "#151C27", "#121923");
+  const p = proj(x + 0.4, y + 0.3, 1.05);
+  for (let i = 0; i < 3; i++) {
+    c.beginPath();
+    c.arc(p[0] - 6 * view.as + i * 6 * view.as, p[1] - i * 4 * view.as, 1.6 * view.as, 0, Math.PI * 2);
+    c.fillStyle = i === 2 ? "rgba(240,138,138,0.9)" : "rgba(111,211,192,0.75)";
+    c.fill();
+  }
+}
+
+function drawTable(c, x, y) {
+  isoBox(c, x, y, 2.3, 1.15, 0, 0.55, "#222C3B", "#19212D", "#151C26");
+  const p = proj(x + 1.15, y + 0.57, 0.58);
+  c.beginPath();
+  c.ellipse(p[0], p[1], 10 * view.as, 5 * view.as, 0, 0, Math.PI * 2);
+  c.fillStyle = "rgba(232,180,90,0.20)";
+  c.fill();
+}
+
+function drawBoard(c, x, y) {
+  isoBox(c, x, y, 1.9, 0.12, 0, 1.05, "#243040", "#1A2330", "#161E29");
+  const p0 = proj(x + 0.18, y + 0.13, 0.95);
+  const p1 = proj(x + 1.72, y + 0.13, 0.95);
+  c.strokeStyle = "rgba(111,211,192,0.5)";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(p0[0], p0[1]); c.lineTo(p1[0], p1[1] - 8 * view.as);
+  c.stroke();
+  c.strokeStyle = "rgba(232,180,90,0.4)";
+  c.beginPath();
+  c.moveTo(p0[0] + 6, p0[1] - 6 * view.as); c.lineTo(p0[0] + 34 * view.as, p0[1] - 6 * view.as);
+  c.stroke();
+}
+
+/* =====================================================================
+   4. Ajan çizimi
+   ===================================================================== */
+function rrect(c, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.arcTo(x + w, y, x + w, y + h, rr);
+  c.arcTo(x + w, y + h, x, y + h, rr);
+  c.arcTo(x, y + h, x, y, rr);
+  c.arcTo(x, y, x + w, y, rr);
+  c.closePath();
+}
+
+function drawAgent(c, a, now) {
+  const [sx, sy] = proj(a.x, a.y, 0);
+  const s = view.as;
+  const bob = a.moving ? Math.sin(now * 0.018) * 1.8 : Math.sin(now * 0.0018 + a.t) * 0.8;
+
+  // zemin halkası
+  const ring = a.status === "çalışıyor" ? 0.55 : a.status === "bekliyor" ? 0.9 : 0.22;
+  c.beginPath();
+  c.ellipse(sx, sy + 1, 13 * s, 6 * s, 0, 0, Math.PI * 2);
+  c.fillStyle = `rgba(0,0,0,0.35)`;
+  c.fill();
+  c.beginPath();
+  c.ellipse(sx, sy + 1, 13 * s, 6 * s, 0, 0, Math.PI * 2);
+  c.strokeStyle = hexA(a.color, a.status === "bekliyor" ? 0.85 : 0.45);
+  c.lineWidth = 1.4;
+  c.stroke();
+
+  const bodyH = 22 * s, bodyW = 17 * s;
+  const headR = 7.2 * s;
+  const topY = sy - bodyH - headR * 1.2 + bob;
+
+  // gövde
+  const grad = c.createLinearGradient(sx, topY, sx, sy);
+  grad.addColorStop(0, a.color);
+  grad.addColorStop(1, hexA(a.color, 0.62));
+  rrect(c, sx - bodyW / 2, topY, bodyW, bodyH + headR * 0.6, 5 * s);
+  c.fillStyle = grad;
+  c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.35)";
+  c.lineWidth = 0.8;
+  c.stroke();
+
+  // baş
+  c.beginPath();
+  c.arc(sx, topY - headR * 0.55, headR, 0, Math.PI * 2);
+  c.fillStyle = "#F0E3CF";
+  c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.25)";
+  c.stroke();
+
+  // baş üstü vurgu (denetçi tacı gibi ince detay)
+  c.beginPath();
+  c.arc(sx, topY - headR * 0.55, headR, Math.PI * 1.15, Math.PI * 1.85);
+  c.strokeStyle = a.color;
+  c.lineWidth = 2 * s;
+  c.stroke();
+
+  // isim
+  c.font = `500 ${Math.round(9.5)}px ui-sans-serif,"Segoe UI",sans-serif`;
+  c.textAlign = "center";
+  c.textBaseline = "top";
+  c.fillStyle = "rgba(180,196,216,0.72)";
+  c.fillText(a.name, sx, sy + 6 * s);
+
+  // durum noktası
+  const dotColor = a.status === "çalışıyor" ? "#6FD3C0" : a.status === "bekliyor" ? "#E8B45A" : "#5A6680";
+  c.beginPath();
+  c.arc(sx + bodyW / 2 - 1, topY + 3 * s, 2.4 * s, 0, Math.PI * 2);
+  c.fillStyle = dotColor;
+  c.fill();
+
+  // konuşma balonu
+  if (a.msg && now < a.msgUntil) {
+    c.font = `500 10.5px ui-sans-serif,"Segoe UI",sans-serif`;
+    const text = a.msg.length > 34 ? a.msg.slice(0, 33) + "…" : a.msg;
+    const tw = c.measureText(text).width;
+    const bw = Math.min(210, tw + 18);
+    const bx = sx - bw / 2, by = topY - headR * 2 - 26;
+    rrect(c, bx, by, bw, 21, 6);
+    c.fillStyle = "rgba(14,20,30,0.93)";
+    c.fill();
+    c.strokeStyle = hexA(a.color, 0.42);
+    c.lineWidth = 1;
+    c.stroke();
+    c.beginPath();
+    c.moveTo(sx - 4, by + 21); c.lineTo(sx + 4, by + 21); c.lineTo(sx, by + 26);
+    c.closePath();
+    c.fillStyle = "rgba(14,20,30,0.93)";
+    c.fill();
+    c.fillStyle = "#CBD6E6";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(text, sx, by + 11);
+  }
+  c.textAlign = "left";
+  c.textBaseline = "alphabetic";
+}
+
+const hexA = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
+/* =====================================================================
+   5. Sahne çizimi (statik katman + derinlik sıralı dinamik katman)
+   ===================================================================== */
+function draw(now) {
+  ctx.clearRect(0, 0, view.w, view.h);
+  ctx.drawImage(bg, 0, 0, view.w, view.h);
+
+  const items = [];
+
+  // mobilya
+  for (const a of AGENTS) {
+    items.push({ d: a.desk[0] + 0.95 + a.desk[1] + 0.5, fn: () => drawDesk(ctx, a, state.agents[a.id].status === "çalışıyor") });
+  }
+  items.push({ d: 2.0 + 0.2, fn: () => drawPlant(ctx, 0.9, 0.7) });
+  items.push({ d: 8.0 + 0.2, fn: () => drawPlant(ctx, 8.2, 0.8) });
+  items.push({ d: 14.2 + 0.2, fn: () => drawPlant(ctx, 16.9, 12.9) });
+  items.push({ d: 6.0 + 4.2, fn: () => drawBoard(ctx, 5.3, 4.15) });
+  items.push({ d: 11.9 + 11.6, fn: () => drawTable(ctx, 10.9, 11.2) });
+  items.push({ d: 15.6 + 8.1, fn: () => drawRack(ctx, 15.9, 8.0) });
+  items.push({ d: 15.6 + 9.4, fn: () => drawRack(ctx, 15.9, 9.2) });
+
+  // ajanlar
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    items.push({ d: a.x + a.y, fn: () => drawAgent(ctx, a, now) });
+  }
+
+  items.sort((p, q) => p.d - q.d);
+  for (const it of items) it.fn();
+}
+
+/* =====================================================================
+   6. Simülasyon (olay üreteci)
+   ===================================================================== */
+const AGENT_BY_ID = Object.fromEntries(AGENTS.map(a => [a.id, a]));
+const nowMs = () => performance.now();
+
+function moveTo(agent, x, y) {
+  agent.tx = x; agent.ty = y;
+}
+
+const VISIT = {
+  supervisor: [12.6, 10.8],
+  planner:    [6.5, 5.4],
+  researcher: [2.8, 4.9],
+  analyst:    [12.4, 3.4],
+  builder:    [15.0, 3.6],
+  reviewer:   [4.4, 11.4],
+};
+
+function emit(type, agentId, msg, opts = {}) {
+  const a = state.agents[agentId];
+  const cost = opts.cost || 0;
+  const tok = opts.tokens || 0;
+
+  state.events++;
+  state.cost += cost;
+  state.tokens += tok;
+  if (a) {
+    a.lastEvent = msg;
+    a.msg = msg;
+    a.msgUntil = nowMs() + 4200;
+    a.status = opts.status || (type === "agent.progress" ? "çalışıyor" : a.status);
+    a.spend += cost;
+    if (tok) a.steps += 1;
+    if (opts.move !== false && type !== "tool.completed") {
+      if (a.role) {
+        const spot = VISIT[a.id] || a.home;
+        if (type === "agent.started" || type === "agent.progress") moveTo(a, spot[0] + (Math.random() - 0.5) * 0.5, spot[1] + (Math.random() - 0.5) * 0.4);
+      }
+    }
+    if (type === "task.completed" || type === "task.failed") {
+      moveTo(a, a.home[0], a.home[1]);
+      a.status = "boşta";
+    }
+  }
+
+  addFeedEvent({ type, agentId, msg, cost, tok, severity: opts.severity || "info" });
+  updateMetrics();
+
+  // olay → pipeline eşlemesi (canlı modda da doğru adım yansır)
+  if (type === "task.created") {
+    state.pipeline = ["active", "idle", "idle", "idle", "idle"];
+    renderPipeline();
+  } else if (type === "task.planned") {
+    setPipeline(1);
+  } else if (type === "agent.started" && agentId === "analyst") {
+    setPipeline(2);
+  } else if (type === "agent.started" && agentId === "reviewer") {
+    setPipeline(3);
+  } else if (type === "task.completed") {
+    setPipeline(4, "done");
+  }
+
+  if (type === "task.completed" || type === "task.failed") setPipeline("done");
+}
+
+function setPipeline(stepOrDone, value) {
+  if (stepOrDone === "done") {
+    state.pipeline = ["done", "done", "done", "done", "done"];
+    renderPipeline();
+    return;
+  }
+  for (let i = 0; i < 5; i++) if (state.pipeline[i] === "active") state.pipeline[i] = "done";
+  state.pipeline[stepOrDone] = "active";
+  if (value === "done") state.pipeline[stepOrDone] = "done";
+  renderPipeline();
+}
+
+/* --- senaryo --- */
+let simTime = 0, stepIdx = 0, scenarioStart = 0, scenarioNo = 0;
+let STEPS = [];
+
+function buildScript(base) {
+  const t = (s) => base + s;
+  return [
+    { at: t(0.1), fn: () => { state.pipeline = ["active","idle","idle","idle","idle"]; renderPipeline(); emit("task.created", "supervisor", "Görev alındı · kapsam doğrulanıyor", { cost: 0.0004, tokens: 620, status: "çalışıyor" }); } },
+    { at: t(1.4), fn: () => emit("task.planned", "planner", "Plan çıktı: 4 alt görev, 2 paralel kol", { cost: 0.0032, tokens: 2140, status: "çalışıyor" }) },
+    { at: t(2.2), fn: () => { setPipeline(1); emit("agent.started", "researcher", "Kaynak taraması başladı (3 site, 1 PDF)", { cost: 0.0011, tokens: 880 }); } },
+    { at: t(4.0), fn: () => emit("model.completed", "researcher", "12 kaynak ayıklandı, 4'ü birincil", { cost: 0.0026, tokens: 3100 }) },
+    { at: t(5.2), fn: () => { setPipeline(2); emit("agent.started", "analyst", "Fiyat serisi ile pazar payı karşılaştırılıyor", { cost: 0.0009, tokens: 740 }); } },
+    { at: t(6.6), fn: () => emit("agent.progress", "builder", "Rapor iskeleti + 3 grafik üretiliyor", { cost: 0.0041, tokens: 4020 }) },
+    { at: t(8.0), fn: () => emit("model.completed", "analyst", "3 bulgu, 1 çelişki işaretlendi", { cost: 0.0038, tokens: 2860 }) },
+    { at: t(9.4), fn: () => emit("tool.proposed", "builder", "reports/2026-Q4.md üzerine yazma izni istendi", { cost: 0, tokens: 0, severity: "warn" }) },
+    { at: t(9.7), fn: () => requestApproval() },
+    { at: t(99), fn: () => {} }, // onay sonrası devam
+  ];
+}
+
+function scenarioContinue(base) {
+  return [
+    { at: base + 0.2, fn: () => { emit("tool.completed", "builder", "Dosya yazıldı · 18.4 KB · 42 ms", { cost: 0, tokens: 0, severity: "ok" }); } },
+    { at: base + 1.0, fn: () => { setPipeline(3); emit("agent.started", "reviewer", "Sayılar ve kaynak eşleşmesi denetleniyor", { cost: 0.0014, tokens: 1100 }); } },
+    { at: base + 2.6, fn: () => emit("review.failed", "reviewer", "1 grafikte eksen birimi hatalı — düzeltmeye dönüldü", { cost: 0.0021, tokens: 1680, severity: "err" }) },
+    { at: base + 3.6, fn: () => emit("agent.progress", "builder", "Birim düzeltildi, yeniden üretildi", { cost: 0.0018, tokens: 1420 }) },
+    { at: base + 4.8, fn: () => emit("approval.decided", "supervisor", "Onay verildi · policy: write:reports", { cost: 0, tokens: 0, severity: "ok" }) },
+    { at: base + 5.4, fn: () => { setPipeline(4); emit("task.completed", "supervisor", "Teslim: rapor + özet + kaynak listesi", { cost: 0.0012, tokens: 940, severity: "ok" }); } },
+  ];
+}
+
+let continueSteps = null;
+
+function tickSim(dt) {
+  if (state.paused || state.pendingApproval) return;
+  if (state.live) return;
+  simTime += dt * state.speed;
+
+  const list = continueSteps || STEPS;
+  while (stepIdx < list.length && list[stepIdx].at <= simTime) {
+    const s = list[stepIdx++];
+    s.fn();
+    // senaryo değiştiyse (onay/ret/yeni tur) eski listeyle devam etme
+    if (list !== (continueSteps || STEPS)) break;
+  }
+  if (!continueSteps && stepIdx >= STEPS.length) return;
+
+  if (continueSteps && stepIdx >= continueSteps.length) {
+    // yeni görev turu
+    if (simTime > continueSteps[continueSteps.length - 1].at + 6) startScenario();
+  }
+}
+
+function startScenario() {
+  scenarioNo++;
+  state.taskId = "tsk_" + Math.random().toString(36).slice(2, 6);
+  document.getElementById("taskId").textContent = state.taskId;
+  state.pipeline = ["idle", "idle", "idle", "idle", "idle"];
+  renderPipeline();
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    moveTo(a, a.home[0], a.home[1]);
+    a.status = "boşta";
+    a.msg = "";
+  }
+  scenarioStart = simTime;
+  STEPS = buildScript(scenarioStart);
+  stepIdx = 0;
+  continueSteps = null;
+}
+
+function requestApproval() {
+  if (!state.pendingApproval) state.approvals.required++;
+  state.pendingApproval = { tool: "fs.write", path: "reports/2026-Q4.md", risk: "yüksek" };
+  const box = document.getElementById("approval");
+  box.hidden = false;
+  document.getElementById("apYes").disabled = false;
+  document.getElementById("apNo").disabled = false;
+  const b = state.agents.builder;
+  b.status = "bekliyor";
+  addFeedEvent({ type: "approval.required", agentId: "builder", msg: "Onay bekliyor · fs.write", cost: 0, tok: 0, severity: "warn" });
+}
+
+function decideApproval(ok) {
+  state.pendingApproval = null;
+  document.getElementById("approval").hidden = true;
+
+  if (ok) state.approvals.approved++; else state.approvals.rejected++;
+  state.lastDecision = {
+    ok,
+    msg: ok ? "fs.write onaylandı · reports/2026-Q4.md" : "fs.write reddedildi · görev iptal",
+  };
+
+  if (state.live) {
+    fetch(liveBase() + "/approve?ok=" + (ok ? 1 : 0), { method: "POST" }).catch(() => {});
+    return;
+  }
+
+  state.agents.builder.status = "çalışıyor";
+  const base = simTime;
+  if (ok) {
+    continueSteps = scenarioContinue(base);
+  } else {
+    emit("task.failed", "supervisor", "Kullanıcı reddetti · görev iptal", { severity: "err", cost: 0, tokens: 0 });
+    continueSteps = [{ at: base + 6, fn: () => startScenario() }];
+  }
+  stepIdx = 0;
+  simTime = base;
+}
+
+/* =====================================================================
+   7. Olay akışı (DOM) — textContent ile, HTML enjeksiyonu yok
+   ===================================================================== */
+const feed = document.getElementById("feed");
+const feedCount = document.getElementById("feedCount");
+let feedItems = 0;
+
+function addFeedEvent(e) {
+  const empty = feed.querySelector(".empty");
+  if (empty) empty.remove();
+  updateSR(e);
+
+  const li = document.createElement("li");
+  if (e.severity === "warn") li.className = "warn";
+  if (e.severity === "err" || e.type === "task.failed") li.className = "err";
+  if (e.severity === "ok") li.className = "ok";
+
+  const time = document.createElement("span");
+  time.className = "t";
+  time.textContent = new Date().toLocaleTimeString("tr-TR", { hour12: false });
+
+  const msg = document.createElement("span");
+  msg.className = "m";
+  const who = document.createElement("span");
+  who.className = "who";
+  who.style.color = AGENT_BY_ID[e.agentId] ? AGENT_BY_ID[e.agentId].color : "#8B98AB";
+  who.textContent = (AGENT_BY_ID[e.agentId] ? AGENT_BY_ID[e.agentId].name : "Sistem") + " ";
+  msg.appendChild(who);
+  msg.appendChild(document.createTextNode(e.msg));
+
+  const cost = document.createElement("span");
+  cost.className = "c";
+  cost.textContent = e.cost ? "$" + e.cost.toFixed(4) : e.tok ? e.tok + " tk" : "";
+
+  li.append(time, msg, cost);
+  feed.prepend(li);
+  feedItems++;
+  feedCount.textContent = feedItems + " olay";
+
+  state.log.push({
+    type: e.type,
+    agentId: e.agentId,
+    msg: e.msg,
+    cost: e.cost || 0,
+    severity: e.severity || "info",
+    time: time.textContent,
+  });
+  if (state.log.length > 400) state.log.shift();
+  if (e.type !== "system") {
+    state.costSeries.push(state.cost);
+    if (state.costSeries.length > 60) state.costSeries.shift();
+  }
+
+  while (feed.children.length > 60) feed.lastElementChild.remove();
+}
+
+/* =====================================================================
+   8. Metrikler / pipeline / kartlar
+   ===================================================================== */
+function updateSR(e) {
+  const el = document.getElementById("srSummary");
+  if (!el) return;
+  const working = Object.values(state.agents).filter(a => a.status === "çalışıyor").length;
+  el.textContent = `${e.msg}. Şu an ${working} ajan çalışıyor, maliyet $${state.cost.toFixed(3)}.`;
+}
+
+function updateMetrics() {
+  document.getElementById("cost").textContent = "$" + state.cost.toFixed(4);
+  document.getElementById("tokens").textContent = state.tokens.toLocaleString("tr-TR");
+  const ratio = Math.min(1, state.cost / BUDGET);
+  document.getElementById("budgetBar").style.width = (ratio * 100).toFixed(1) + "%";
+  document.getElementById("budgetText").textContent = "$" + state.cost.toFixed(3) + " / $" + BUDGET.toFixed(3);
+  document.getElementById("budgetBar").style.background = ratio > 0.85
+    ? "linear-gradient(90deg,#F08A8A,#E8B45A)"
+    : "linear-gradient(90deg,#6FD3C0,#E8B45A)";
+}
+
+function renderPipeline() {
+  const host = document.getElementById("steps");
+  host.innerHTML = "";
+  PIPELINE.forEach((label, i) => {
+    const el = document.createElement("div");
+    el.className = "step " + (state.pipeline[i] === "active" ? "active" : state.pipeline[i] === "done" ? "done" : "");
+    const n = document.createElement("span");
+    n.className = "n";
+    n.textContent = state.pipeline[i] === "done" ? "✓" : String(i + 1);
+    const l = document.createElement("span");
+    l.className = "lbl";
+    l.textContent = label;
+    const bar = document.createElement("span");
+    bar.className = "bar";
+    el.append(n, l, bar);
+    host.appendChild(el);
+  });
+}
+
+function renderCards() {
+  const host = document.getElementById("cards");
+  host.innerHTML = "";
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    const card = document.createElement("article");
+    card.className = "card";
+
+    const head = document.createElement("header");
+    const av = document.createElement("span");
+    av.className = "avatar";
+    av.style.background = a.color;
+    av.textContent = a.letter;
+    const nm = document.createElement("span");
+    nm.className = "name";
+    nm.textContent = a.name;
+    const zn = document.createElement("span");
+    zn.className = "zone";
+    zn.textContent = a.zone === "plan" ? "Planlama" : a.zone === "field" ? "Saha" : a.zone === "review" ? "İnceleme" : "Operasyon";
+    head.append(av, nm, zn);
+
+    const st = document.createElement("p");
+    st.className = "state";
+    st.textContent = a.status + " · " + a.lastEvent;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const s1 = document.createElement("span");
+    s1.textContent = "$" + a.spend.toFixed(4);
+    const s2 = document.createElement("span");
+    s2.textContent = a.steps + " adım";
+    meta.append(s1, s2);
+
+    card.append(head, st, meta);
+    host.appendChild(card);
+  }
+}
+
+/* =====================================================================
+   8.5 Görünümler: Panel / Saha / Ofis 3D / Liste
+   ===================================================================== */
+const stageEl = document.getElementById("stage");
+const dashEl = document.getElementById("dash");
+const officeEl = document.getElementById("office3d");
+const officeHint = document.getElementById("officeHint");
+const floorEl = document.getElementById("floor");
+const flatEl = document.getElementById("flat");
+const hudEl = document.querySelector(".hud");
+const hintEl = document.querySelector(".hint");
+const VIEWS = ["dash", "floor", "office", "list"];
+
+let currentView = "dash";
+let lastDash = 0;
+let office = null, officeToken = 0;
+
+function setView(v, persist = true) {
+  if (!VIEWS.includes(v)) v = "dash";
+  currentView = v;
+
+  dashEl.hidden = v !== "dash";
+  floorEl.hidden = v !== "floor";
+  officeEl.hidden = v !== "office";
+  officeHint.hidden = v !== "office";
+  flatEl.hidden = v !== "list";
+  if (hudEl) hudEl.style.display = v === "floor" ? "" : "none";
+  if (hintEl) hintEl.style.display = v === "floor" ? "" : "none";
+
+  document.querySelectorAll(".vbtn").forEach((b) => {
+    const on = b.dataset.view === v;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  });
+
+  if (v === "dash") renderDash();
+  if (v === "list") renderCards();
+  if (v === "floor") requestAnimationFrame(resize);
+  if (v === "office") ensureOffice(); else disposeOffice();
+  if (persist) localStorage.setItem("zk_view", v);
+}
+
+async function ensureOffice() {
+  const gen = officeToken + 1; officeToken = gen;
+  if (office) return;
+  officeEl.innerHTML = '<div class="office-load">3D sahne yükleniyor…</div>';
+  try {
+    const mod = await import("./office3d.js");
+    if (gen !== officeToken || currentView !== "office") return;
+    officeEl.innerHTML = "";
+    office = mod.createOffice3D(officeEl, state);
+  } catch (err) {
+    officeEl.innerHTML = '<div class="office-load">3D yüklenemedi · sayfayı sunucu üzerinden açın</div>';
+  }
+}
+
+function disposeOffice() {
+  officeToken++;
+  if (office) { office.dispose(); office = null; }
+  officeEl.innerHTML = "";
+}
+
+/* ---------- panel ---------- */
+function renderDash() {
+  if (currentView !== "dash") return;
+
+  const completed = state.log.filter((e) => e.type === "task.completed").length;
+  const failed = state.log.filter((e) => e.type === "review.failed" || e.type === "task.failed").length;
+  const total = completed + failed;
+  const ap = state.approvals;
+  const active = Object.values(state.agents).filter((a) => a.status === "çalışıyor").length;
+
+  const spend = document.getElementById("kSpend");
+  spend.textContent = "$" + state.cost.toFixed(4);
+  document.getElementById("kSpendSub").textContent =
+    state.events + " olay · " + state.tokens.toLocaleString("tr-TR") + " token";
+
+  document.getElementById("kVerify").textContent = total ? Math.round((completed / total) * 100) + "%" : "—";
+  document.getElementById("kVerifySub").textContent = total
+    ? completed + " geçti · " + failed + " düzeltme"
+    : "tamamlanan görev yok";
+
+  document.getElementById("kApproval").textContent = (ap.approved + ap.rejected)
+    ? Math.round((ap.approved / (ap.approved + ap.rejected)) * 100) + "%"
+    : "—";
+  document.getElementById("kApprovalSub").textContent = (ap.approved + ap.rejected || ap.required)
+    ? ap.approved + " onay · " + ap.rejected + " ret" + (state.pendingApproval ? " · 1 bekliyor" : "")
+    : "bekleyen onay yok";
+
+  document.getElementById("kActive").textContent = active + " / " + AGENTS.length;
+  document.getElementById("kActiveSub").textContent = state.pendingApproval ? "1 onay bekliyor" : "4 bölge · canlı";
+
+  state.pipeline.forEach((s, i) => {
+    const c = document.getElementById("rn" + i);
+    if (c) c.setAttribute("class", "node" + (s === "done" ? " done" : s === "active" ? " active" : ""));
+  });
+  document.getElementById("routeSub").textContent = state.taskId;
+
+  // maliyet grafiği
+  const series = state.costSeries.length ? state.costSeries : [0];
+  const max = Math.max(0.0001, series[series.length - 1]);
+  const n = series.length;
+  const pts = series.map((v, i) => [
+    4 + (i / Math.max(1, n - 1)) * 552,
+    104 - (v / max) * 96,
+  ]);
+  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  document.getElementById("costLine").setAttribute("d", line);
+  document.getElementById("costArea").setAttribute("d", line + " L 556 110 L 4 110 Z");
+  document.getElementById("costSub").textContent = "$" + state.cost.toFixed(4);
+
+  // onay kuyruğu
+  const p = state.pendingApproval;
+  document.getElementById("qItem").hidden = !p;
+  document.getElementById("qEmpty").hidden = !!p;
+  document.getElementById("qCount").textContent = p ? "1" : "0";
+  if (p) {
+    document.getElementById("qWho").textContent = "Uygulayıcı";
+    document.getElementById("qWhat").textContent = p.tool + " · " + p.path;
+    document.getElementById("qYes").disabled = false;
+    document.getElementById("qNo").disabled = false;
+  }
+  const ld = state.lastDecision;
+  document.getElementById("qLast").hidden = !ld;
+  if (ld) {
+    const tag = document.getElementById("qLastTag");
+    tag.textContent = ld.ok ? "Onay" : "Ret";
+    tag.style.color = ld.ok ? "var(--teal)" : "var(--rose)";
+    document.getElementById("qLastMsg").textContent = ld.msg;
+  }
+
+  // ajan sağlığı
+  const tb = document.getElementById("healthRows");
+  tb.textContent = "";
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    const tr = document.createElement("tr");
+    const td1 = document.createElement("td");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = a.status === "çalışıyor" ? "#6FD3C0" : a.status === "bekliyor" ? "#E8B45A" : "#55627a";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = a.name;
+    td1.append(dot, nm);
+    const td2 = document.createElement("td");
+    td2.textContent = a.status;
+    const td3 = document.createElement("td");
+    td3.textContent = a.lastEvent || "—";
+    td3.title = a.lastEvent || "";
+    tr.append(td1, td2, td3);
+    tb.appendChild(tr);
+  }
+
+  // uyarılar
+  const alerts = state.log.filter((e) => e.severity === "warn" || e.severity === "err").slice(-3).reverse();
+  const ul = document.getElementById("alertList");
+  ul.textContent = "";
+  document.getElementById("alertCount").textContent = alerts.length;
+  if (!alerts.length) {
+    const li = document.createElement("li");
+    const ic = document.createElement("span");
+    ic.className = "ic w";
+    ic.textContent = "✓";
+    const tx = document.createElement("span");
+    tx.textContent = "Uyarı yok · sistem normal";
+    li.append(ic, tx);
+    ul.appendChild(li);
+  } else {
+    for (const e of alerts) {
+      const li = document.createElement("li");
+      const ic = document.createElement("span");
+      ic.className = "ic " + (e.severity === "err" ? "e" : "w");
+      ic.textContent = e.severity === "err" ? "!" : "•";
+      const tx = document.createElement("span");
+      tx.textContent = e.msg;
+      const t = document.createElement("span");
+      t.className = "t";
+      t.textContent = e.time || "";
+      li.append(ic, tx, t);
+      ul.appendChild(li);
+    }
+  }
+}
+
+/* ---------- maskot kataloğu ---------- */
+const SPECIES_LABEL = { kedi: "Kedi", kopek: "Köpek", kus: "Kuş" };
+const ACC_LABEL = { none: "—", bandana: "Bandana", hat: "Şapka", hair: "Dikenli saç" };
+
+function loadCast() {
+  try {
+    const raw = localStorage.getItem("zk_cast");
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (Array.isArray(d.catalog) && d.catalog.length) state.catalog = d.catalog;
+    if (d.cast && typeof d.cast === "object") state.cast = { ...state.cast, ...d.cast };
+  } catch (e) { /* bozuk kayıt yoksayılır */ }
+}
+
+function saveCast() {
+  try {
+    localStorage.setItem("zk_cast", JSON.stringify({ catalog: state.catalog, cast: state.cast }));
+  } catch (e) { /* kota dolu olabilir */ }
+}
+
+function applyCast(rebuild = true) {
+  for (const id in state.agents) {
+    const c = state.catalog.find((x) => x.id === state.cast[id]);
+    if (!c) continue;
+    const a = state.agents[id];
+    a.color = c.color;
+    a.species = c.species;
+    a.accessory = c.accessory;
+    a.charName = c.name;
+    a.model = c.model || "";
+  }
+  if (!rebuild) return;
+  saveCast();
+  renderMascotPanel();
+  if (currentView === "office") { disposeOffice(); ensureOffice(); }
+  if (currentView === "list") renderCards();
+}
+
+function renderMascotPanel() {
+  const rl = document.getElementById("roleList");
+  if (!rl) return;
+  rl.textContent = "";
+
+  for (const def of AGENTS) {
+    const row = document.createElement("div");
+    row.className = "role";
+    const label = document.createElement("span");
+    label.className = "rn";
+    label.textContent = def.name;
+    const sel = document.createElement("select");
+    for (const c of state.catalog) {
+      const o = document.createElement("option");
+      o.value = c.id;
+      o.textContent = c.name;
+      if (state.cast[def.id] === c.id) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", () => { state.cast[def.id] = sel.value; applyCast(); });
+    row.append(label, sel);
+    rl.appendChild(row);
+  }
+
+  const cl = document.getElementById("catalogList");
+  cl.textContent = "";
+  document.getElementById("catCount").textContent = "(" + state.catalog.length + ")";
+  const assigned = new Set(Object.values(state.cast));
+
+  for (const c of state.catalog) {
+    const card = document.createElement("div");
+    card.className = "cc";
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "del";
+    del.textContent = "✕";
+    del.title = assigned.has(c.id) ? "Kaldır (rollere başka karakter atanır)" : "Katalogdan çıkar";
+    del.disabled = state.catalog.length <= 1;
+    del.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (state.catalog.length <= 1) return;
+      const fallback = state.catalog.find((x) => x.id !== c.id);
+      let moved = 0;
+      for (const role in state.cast) {
+        if (state.cast[role] === c.id) { state.cast[role] = fallback.id; moved++; }
+      }
+      state.catalog = state.catalog.filter((x) => x.id !== c.id);
+      if (editingId === c.id) {
+        editingId = null;
+        document.getElementById("nAdd").textContent = "Kataloğa ekle";
+        document.getElementById("nName").value = "";
+        document.getElementById("nModel").value = "";
+      }
+      saveCast();
+      renderMascotPanel();
+      applyCast();
+      if (moved) toast("Karakter kaldırıldı · " + moved + " rol " + fallback.name + " karakterine atandı");
+    });
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = c.color;
+    dot.style.color = c.color;
+    const nm = document.createElement("div");
+    nm.className = "nm";
+    nm.textContent = c.name;
+    if (c.model) {
+      const badge = document.createElement("span");
+      badge.textContent = "GLB";
+      badge.style.cssText = "font:600 8px var(--mono);color:var(--teal);border:1px solid rgba(111,211,192,.4);border-radius:4px;padding:0 3px;margin-left:4px";
+      nm.appendChild(badge);
+    }
+    const sp = document.createElement("div");
+    sp.className = "sp";
+    sp.textContent = (SPECIES_LABEL[c.species] || c.species) + (c.accessory !== "none" ? " · " + ACC_LABEL[c.accessory] : "");
+    card.append(del, dot, nm, sp);
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest(".del")) return;
+      editingId = c.id;
+      document.getElementById("nName").value = c.name;
+      document.getElementById("nSpecies").value = c.species;
+      document.getElementById("nAcc").value = c.accessory || "none";
+      document.getElementById("nColor").value = c.color;
+      document.getElementById("nModel").value = c.model || "";
+      document.getElementById("nAdd").textContent = "Güncelle";
+    });
+    cl.appendChild(card);
+  }
+}
+
+let editingId = null;
+
+function openMascot(open) {
+  const m = document.getElementById("mascotModal");
+  m.hidden = !open;
+  if (open) renderMascotPanel();
+}
+
+/* ---------- bağlantı ayarları + görev konsolu ---------- */
+let chatHistory = [];
+
+function toast(text) {
+  const log = document.getElementById("chatLog");
+  if (!log) return;
+  const el = document.createElement("div");
+  el.className = "msg err";
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+window.addEventListener("zk-model-error", (e) => {
+  const d = e.detail || {};
+  toast("3D model yüklenemedi — " + (d.agent || "ajan") + ": " + (d.reason || "bilinmeyen hata") + " · " + (d.url || ""));
+  addFeedEvent({ type: "model.error", agentId: "system", msg: "Model yüklenemedi: " + (d.reason || "hata"), cost: 0, tok: 0, severity: "err" });
+});
+
+function openSettings(open) {
+  const m = document.getElementById("settingsModal");
+  m.hidden = !open;
+  if (open) loadSettings();
+}
+
+async function loadSettings() {
+  try {
+    const r = await fetch("/api/settings");
+    const d = await r.json();
+    document.getElementById("sProvider").value = d.provider || "mock";
+    document.getElementById("sModel").value = d.model || "";
+    document.getElementById("sBase").value = d.base_url || "";
+    document.getElementById("sStatus").textContent =
+      (d.provider || "—") + " · " + (d.model || "—") + (d.has_key ? " · anahtar " + d.key_hint : " · anahtar yok");
+    document.getElementById("chatState").textContent =
+      (d.provider === "mock" ? "mock" : d.provider) + " · " + (d.model || "—") + (d.has_key ? " · " + d.key_hint : "");
+  } catch (e) {
+    document.getElementById("chatState").textContent = "sunucu yok";
+  }
+}
+
+async function saveSettings() {
+  const body = {
+    provider: document.getElementById("sProvider").value,
+    model: (document.getElementById("sModel").value || "").trim() || "mock-1",
+    base_url: (document.getElementById("sBase").value || "").trim(),
+  };
+  const key = (document.getElementById("sKey").value || "").trim();
+  if (key) body.api_key = key;
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "kaydedilemedi");
+    document.getElementById("sKey").value = "";
+    await loadSettings();
+    openSettings(false);
+    emit("system", "system", "Bağlantı ayarları güncellendi", { severity: "ok" });
+  } catch (e) {
+    document.getElementById("sStatus").textContent = "hata: " + (e.message || e);
+  }
+}
+
+function appendMsg(kind, text) {
+  const log = document.getElementById("chatLog");
+  const el = document.createElement("div");
+  el.className = "msg " + kind;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+let chatBusy = false;
+
+async function sendPrompt() {
+  const input = document.getElementById("prompt");
+  const text = (input.value || "").trim();
+  if (!text || chatBusy) return;
+  chatBusy = true;
+  input.value = "";
+  appendMsg("user", text);
+  chatHistory.push({ role: "user", content: text });
+
+  emit("task.created", "supervisor", "İstem: " + text.slice(0, 66), { status: "çalışıyor" });
+  setPipeline(0);
+
+  const btn = document.getElementById("btnSend");
+  btn.disabled = true;
+  btn.textContent = "…";
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: chatHistory.slice(-8) }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "istek başarısız");
+    appendMsg("bot", d.text || "(boş yanıt)");
+    chatHistory.push({ role: "assistant", content: d.text || "" });
+    emit("model.completed", "supervisor", (d.model || "model") + " · yanıt geldi", {
+      cost: d.cost_usd || 0, tokens: (d.usage && d.usage.out) || 0, severity: "ok",
+    });
+    emit("task.completed", "supervisor", "Yanıt teslim edildi", { severity: "ok" });
+  } catch (e) {
+    appendMsg("err", String(e.message || e));
+    emit("task.failed", "supervisor", "İstem başarısız: " + String(e.message || e), { severity: "err" });
+  } finally {
+    chatBusy = false;
+    btn.disabled = false;
+    btn.textContent = "Gönder";
+  }
+}
+
+/* =====================================================================
+   9. Canlı mod (SSE)
+   ===================================================================== */
+let es = null;
+let seen = new Set();
+const liveBase = () => (location.protocol === "file:" ? "http://127.0.0.1:8787" : "");
+
+function toggleLive() {
+  if (state.live) { disconnectLive(); return; }
+  const url = liveBase() + "/events";
+  try {
+    es = new EventSource(url);
+  } catch (err) {
+    flashMode("SSE yok");
+    return;
+  }
+  es.onopen = () => {
+    state.live = true;
+    setMode("live", "Canlı");
+    // geçmiş yeniden oynatılacağı için sayaçları sıfırla
+    state.cost = 0; state.tokens = 0; state.events = 0;
+    feed.innerHTML = ""; feedItems = 0; feedCount.textContent = "0 olay";
+    state.pipeline = ["idle", "idle", "idle", "idle", "idle"];
+    renderPipeline();
+    updateMetrics();
+    addFeedEvent({ type: "system", agentId: "system", msg: "Canlı hatta bağlanıldı · geçmiş yeniden oynatılıyor", cost: 0, tok: 0, severity: "ok" });
+  };
+  es.onerror = () => {
+    if (!state.live) flashMode("SSE yok");
+    disconnectLive();
+  };
+  es.onmessage = (m) => {
+    try {
+      const e = JSON.parse(m.data);
+      if (e.type === "hello") return;
+      if (e.id) {
+        if (seen.has(e.id)) return;      // replay + canlı çakışmasını ayıkla
+        seen.add(e.id);
+      }
+      if (e.type === "approval.required") { requestApproval(); return; }
+      emit(e.type, e.agent_id || "supervisor", e.msg || e.type, {
+        cost: e.cost_usd || 0, tokens: (e.tokens && e.tokens.out) || 0, severity: e.severity || "info",
+      });
+    } catch (_) { /* bozuk olay yoksayılır */ }
+  };
+}
+
+function disconnectLive() {
+  if (es) { es.close(); es = null; }
+  state.live = false;
+  setMode("sim", "Simülasyon");
+}
+
+function setMode(kind, text) {
+  const m = document.getElementById("mode");
+  m.classList.toggle("live", kind === "live");
+  document.getElementById("modeText").textContent = text;
+}
+
+let flashTimer = null;
+function flashMode(text) {
+  const el = document.getElementById("modeText");
+  const old = el.textContent;
+  el.textContent = text;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { el.textContent = old; }, 1600);
+}
+
+/* =====================================================================
+   10. Etkileşim
+   ===================================================================== */
+function togglePause() {
+  state.paused = !state.paused;
+  const b = document.getElementById("btnPause");
+  b.textContent = state.paused ? "Devam" : "Duraklat";
+  b.classList.toggle("on", state.paused);
+}
+
+function cycleSpeed() {
+  state.speed = state.speed === 1 ? 2 : state.speed === 2 ? 4 : 1;
+  document.getElementById("btnSpeed").textContent = state.speed + "×";
+  document.getElementById("btnSpeed").classList.toggle("on", state.speed !== 1);
+}
+
+function toggleFlat() {
+  setView(currentView === "list" ? "dash" : "list");
+}
+
+document.getElementById("btnPause").addEventListener("click", togglePause);
+document.getElementById("btnSpeed").addEventListener("click", cycleSpeed);
+document.getElementById("btnLive").addEventListener("click", toggleLive);
+document.getElementById("apYes").addEventListener("click", () => decideApproval(true));
+document.getElementById("apNo").addEventListener("click", () => decideApproval(false));
+
+document.querySelectorAll(".vbtn").forEach((b) => {
+  b.addEventListener("click", () => setView(b.dataset.view));
+});
+document.getElementById("qYes").addEventListener("click", () => decideApproval(true));
+document.getElementById("qNo").addEventListener("click", () => decideApproval(false));
+
+document.getElementById("btnMascot").addEventListener("click", () => openMascot(true));
+document.getElementById("mClose").addEventListener("click", () => openMascot(false));
+document.getElementById("mApply").addEventListener("click", () => { applyCast(); openMascot(false); });
+document.getElementById("nAdd").addEventListener("click", () => {
+  const name = (document.getElementById("nName").value || "").trim();
+  if (!name) return;
+  const payload = {
+    name,
+    species: document.getElementById("nSpecies").value,
+    accessory: document.getElementById("nAcc").value,
+    color: document.getElementById("nColor").value,
+    model: (document.getElementById("nModel").value || "").trim(),
+  };
+  if (editingId) {
+    const c = state.catalog.find((x) => x.id === editingId);
+    if (c) Object.assign(c, payload);
+    editingId = null;
+    document.getElementById("nAdd").textContent = "Kataloğa ekle";
+  } else {
+    state.catalog.push({ id: "c_" + Math.random().toString(36).slice(2, 7), ...payload });
+  }
+  document.getElementById("nName").value = "";
+  document.getElementById("nModel").value = "";
+  saveCast();
+  renderMascotPanel();
+  applyCast();
+});
+document.getElementById("mascotModal").addEventListener("click", (e) => {
+  if (e.target.id === "mascotModal") openMascot(false);
+});
+
+document.getElementById("btnSettings").addEventListener("click", () => openSettings(true));
+document.getElementById("sClose").addEventListener("click", () => openSettings(false));
+document.getElementById("sSave").addEventListener("click", saveSettings);
+document.getElementById("sClear").addEventListener("click", async () => {
+  try {
+    await fetch("/api/settings", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clear_key: true }),
+    });
+    await loadSettings();
+  } catch (e) { /* yoksay */ }
+});
+document.getElementById("settingsModal").addEventListener("click", (e) => {
+  if (e.target.id === "settingsModal") openSettings(false);
+});
+document.getElementById("btnSend").addEventListener("click", sendPrompt);
+document.getElementById("prompt").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.code === "Space") { e.preventDefault(); togglePause(); }
+  if (e.key === "1") { state.speed = 1; document.getElementById("btnSpeed").textContent = "1×"; }
+  if (e.key === "2") { state.speed = 2; document.getElementById("btnSpeed").textContent = "2×"; }
+  if (e.key === "3") { state.speed = 4; document.getElementById("btnSpeed").textContent = "4×"; }
+  if (e.key.toLowerCase() === "k") toggleFlat();
+  if (e.key.toLowerCase() === "l") toggleLive();
+  if (e.key.toLowerCase() === "m") openMascot(document.getElementById("mascotModal").hidden);
+  if (e.key === "Escape") openMascot(false);
+  if (e.key.toLowerCase() === "v") {
+    const order = ["dash", "floor", "office", "list"];
+    setView(order[(order.indexOf(currentView) + 1) % order.length]);
+  }
+});
+
+/* =====================================================================
+   11. Döngü
+   ===================================================================== */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.06, (now - last) / 1000);
+  last = now;
+
+  if (!state.paused) {
+    tickSim(dt);
+    for (const id in state.agents) {
+      const a = state.agents[id];
+      a.t += dt;
+      const dx = a.tx - a.x, dy = a.ty - a.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.02) {
+        const step = Math.min(dist, 3.1 * dt);
+        a.x += (dx / dist) * step;
+        a.y += (dy / dist) * step;
+        a.moving = true;
+      } else {
+        a.moving = false;
+      }
+    }
+  }
+  if (currentView === "floor") draw(now);
+  if (currentView === "dash" && now - lastDash > 250) { lastDash = now; renderDash(); }
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   12. Başlat
+   ===================================================================== */
+function warmup(sec) {
+  const step = 1 / 30;
+  let t = 0;
+  while (t < sec) {
+    tickSim(step);
+    for (const id in state.agents) {
+      const a = state.agents[id];
+      const dx = a.tx - a.x, dy = a.ty - a.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.02) {
+        const s = Math.min(dist, 3.1 * step);
+        a.x += (dx / dist) * s;
+        a.y += (dy / dist) * s;
+      }
+    }
+    t += step;
+    if (state.pendingApproval) break;
+  }
+  state.agents && Object.values(state.agents).forEach(a => { a.msgUntil = nowMs() + 6000; });
+}
+
+function boot() {
+  const ro = new ResizeObserver(() => resize());
+  ro.observe(stage);
+  resize();
+  renderPipeline();
+  updateMetrics();
+  startScenario();
+
+  const p = new URLSearchParams(location.search);
+
+  // demo/screenshot için sahneyi ileri sar: ?warp=10
+  const warp = parseFloat(p.get("warp") || "0");
+  if (warp > 0) warmup(Math.min(60, warp));
+
+  requestAnimationFrame(frame);
+
+  // URL: ?live=1 ile doğrudan canlı
+  if (p.get("live") === "1") setTimeout(toggleLive, 300);
+
+  // ?view=dash|floor|office|list ; yoksa son tercih, varsayılan Panel
+  const map = { flat: "list", dash: "dash", floor: "floor", office: "office", list: "list" };
+  const wanted = map[p.get("view")] || localStorage.getItem("zk_view") || "dash";
+  setView(wanted, false);
+
+  if (p.get("panel") === "1") setTimeout(() => openMascot(true), 250);
+  if (p.get("settings") === "1") setTimeout(() => openSettings(true), 250);
+  loadSettings();
+
+  // düşük güç modu bilgisi
+  if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
+    document.getElementById("modeText").textContent = "Simülasyon · düşük güç";
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
