@@ -299,6 +299,12 @@
   .sw:hover{transform:scale(1.12)}
   .sw.on{box-shadow:0 0 0 2px rgba(232,180,90,.65);border-color:transparent}
   .sw.rain{background:conic-gradient(#EF4444,#F97316,#FACC15,#22C55E,#22D3EE,#3B82F6,#8B5CF6,#EC4899,#EF4444)}
+  .wheel-pop{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(4,7,11,.62)}
+  .wheel-pop[hidden]{display:none}
+  .wheel-box{background:#0d131c;border:1px solid var(--line-strong);border-radius:14px;padding:14px;
+    display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 24px 60px -24px #000}
+  #wheel{display:block;border-radius:50%;cursor:crosshair}
+  .wheel-prev{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.3)}
   @media (max-width:820px){ .mbody{grid-template-columns:1fr} }
 
   /* ---------- tema ---------- */
@@ -691,6 +697,14 @@
             <option value="kedi">Kedi</option>
             <option value="kopek">Köpek</option>
             <option value="kus">Kuş</option>
+            <option value="kizilpanda">Kızıl Panda</option>
+            <option value="panda">Panda</option>
+            <option value="rakun">Rakun</option>
+            <option value="sincap">Sincap</option>
+            <option value="maymun">Maymun</option>
+            <option value="tavsan">Tavşan</option>
+            <option value="ordek">Ördek</option>
+            <option value="kaplumbaga">Kaplumbağa</option>
           </select>
           <select id="nAcc">
             <option value="none">Aksesuar yok</option>
@@ -698,7 +712,7 @@
             <option value="hat">Şapka</option>
             <option value="hair">Dikenli saç</option>
           </select>
-          <input id="nColor" type="color" value="#E8B45A" title="Renk" />
+          <input id="nColor" type="hidden" value="#E8B45A" />
           <div class="swatches" id="swatches"></div>
           <select id="nModelPick" class="wide"><option value="">Model seç (models/ klasörü)…</option></select>
           <input id="nModel" class="wide" placeholder="veya model yolu: /models/karakter.glb" />
@@ -765,6 +779,14 @@
       <span id="sTestOut" style="font-size:10px;color:var(--dim);align-self:center"></span>
       <button class="btn primary" id="sSave">Kaydet</button>
     </footer>
+  </div>
+</div>
+
+<div class="modal" id="wheelPop" hidden role="dialog" aria-label="Renk seçici">
+  <div class="wheel-box">
+    <canvas id="wheel" width="180" height="180"></canvas>
+    <div class="wheel-prev" id="wheelPrev"></div>
+    <button class="mini" id="wheelClose" type="button">Kapat</button>
   </div>
 </div>
 
@@ -870,6 +892,14 @@ const DEFAULT_CATALOG = [
   { id: "c_ninja",   name: "Ninja",      species: "kedi",  accessory: "bandana", color: "#7FD48A" },
   { id: "c_korsan",  name: "Korsan",     species: "kopek", accessory: "hat",     color: "#F08A8A" },
   { id: "c_savasci", name: "Savaşçı",    species: "kedi",  accessory: "hair",    color: "#F0A04A" },
+  { id: "c_kizilpanda", name: "Kızıl Panda", species: "kizilpanda", accessory: "none", color: "#D97746" },
+  { id: "c_panda",   name: "Panda",       species: "panda",  accessory: "none",    color: "#EDE7DC" },
+  { id: "c_rakun",   name: "Rakun",       species: "rakun",  accessory: "none",    color: "#8A94A6" },
+  { id: "c_sincap",  name: "Sincap",      species: "sincap", accessory: "none",    color: "#C98A4B" },
+  { id: "c_maymun",  name: "Maymun",      species: "maymun", accessory: "none",    color: "#A9744F" },
+  { id: "c_tavsan",  name: "Tavşan",      species: "tavsan", accessory: "none",    color: "#F1E9DC" },
+  { id: "c_ordek",   name: "Ördek",       species: "ordek",  accessory: "none",    color: "#F0C04A" },
+  { id: "c_kaplumbaga", name: "Kaplumbağa", species: "kaplumbaga", accessory: "none", color: "#6FAF7F" },
 ];
 const DEFAULT_CAST = {
   supervisor: "c_kedi", planner: "c_kus", researcher: "c_mavi",
@@ -1811,7 +1841,8 @@ function renderDash() {
 }
 
 /* ---------- maskot kataloğu ---------- */
-const SPECIES_LABEL = { kedi: "Kedi", kopek: "Köpek", kus: "Kuş" };
+const SPECIES_LABEL = { kedi: "Kedi", kopek: "Köpek", kus: "Kuş", kizilpanda: "Kızıl Panda", panda: "Panda", rakun: "Rakun", sincap: "Sincap", maymun: "Maymun", tavsan: "Tavşan", ordek: "Ördek", kaplumbaga: "Kaplumbağa" };
+const SPECIES_COLORS = { kedi: "#E8B45A", kopek: "#A78BFA", kus: "#6FD3C0", kizilpanda: "#D97746", panda: "#EDE7DC", rakun: "#8A94A6", sincap: "#C98A4B", maymun: "#A9744F", tavsan: "#F1E9DC", ordek: "#F0C04A", kaplumbaga: "#6FAF7F" };
 const ACC_LABEL = { none: "—", bandana: "Bandana", hat: "Şapka", hair: "Dikenli saç" };
 
 function loadCast() {
@@ -1931,14 +1962,7 @@ function renderMascotPanel() {
     card.append(del, dot, nm, sp);
     card.addEventListener("click", (ev) => {
       if (ev.target.closest(".del")) return;
-      editingId = c.id;
-      document.getElementById("nName").value = c.name;
-      document.getElementById("nSpecies").value = c.species;
-      document.getElementById("nAcc").value = c.accessory || "none";
-      document.getElementById("nColor").value = c.color;
-      document.getElementById("nModel").value = c.model || "";
-      document.getElementById("nModelPick").value = c.model || "";
-      document.getElementById("nAdd").textContent = "Güncelle";
+      selectCharacter(c);
     });
     cl.appendChild(card);
   }
@@ -1962,8 +1986,7 @@ function renderSwatches() {
     b.style.background = hex;
     b.title = hex;
     b.addEventListener("click", () => {
-      input.value = hex;
-      renderSwatches();
+      previewColor(hex);
     });
     host.appendChild(b);
   }
@@ -1971,18 +1994,121 @@ function renderSwatches() {
   rb.type = "button";
   rb.className = "sw rain";
   rb.title = "Gökkuşağı · canlı renk";
-  rb.addEventListener("click", () => {
-    const hex = RAINBOW[rainbowIdx++ % RAINBOW.length];
-    input.value = hex;
-    renderSwatches();
-  });
+  rb.addEventListener("click", () => openWheel());
   host.appendChild(rb);
+}
+
+function hsvToRgb(h, s, v) {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+
+const rgbHex = (r, g, b) => "#" + [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("").toUpperCase();
+
+let wheelDrawn = false;
+function drawWheel() {
+  if (wheelDrawn) return;
+  const cv = document.getElementById("wheel");
+  const ctx = cv.getContext("2d");
+  const size = cv.width, c = size / 2, r = c - 2;
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - c, dy = y - c;
+      const dist = Math.hypot(dx, dy);
+      const i = (y * size + x) * 4;
+      if (dist > r) { d[i + 3] = 0; continue; }
+      let h = (Math.atan2(dy, dx) / (Math.PI * 2)) * 360;
+      if (h < 0) h += 360;
+      const [rr, gg, bb] = hsvToRgb(h, Math.min(1, dist / r), 1);
+      d[i] = rr; d[i + 1] = gg; d[i + 2] = bb; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.arc(c, c, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  wheelDrawn = true;
+}
+
+function openWheel() {
+  const pop = document.getElementById("wheelPop");
+  pop.hidden = false;
+  drawWheel();
+  document.getElementById("wheelPrev").style.background = document.getElementById("nColor").value;
+}
+
+function pickWheel(ev) {
+  const cv = document.getElementById("wheel");
+  const rect = cv.getBoundingClientRect();
+  const x = ((ev.clientX - rect.left) / rect.width) * cv.width;
+  const y = ((ev.clientY - rect.top) / rect.height) * cv.height;
+  const c = cv.width / 2;
+  const dx = x - c, dy = y - c;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 30 || dist > c - 2) return;
+  let h = (Math.atan2(dy, dx) / (Math.PI * 2)) * 360;
+  if (h < 0) h += 360;
+  const [r, g, b] = hsvToRgb(h, Math.min(1, dist / (c - 2)), 1);
+  const hex = rgbHex(r, g, b);
+  document.getElementById("wheelPrev").style.background = hex;
+  previewColor(hex);
+}
+
+let castApplyTimer = null;
+
+function scheduleCastApply() {
+  clearTimeout(castApplyTimer);
+  castApplyTimer = setTimeout(() => applyCast(), 280);
+}
+
+function selectCharacter(c) {
+  if (!c) return;
+  editingId = c.id;
+  document.getElementById("nName").value = c.name;
+  document.getElementById("nSpecies").value = c.species;
+  document.getElementById("nAcc").value = c.accessory || "none";
+  document.getElementById("nColor").value = c.color;
+  document.getElementById("nModel").value = c.model || "";
+  document.getElementById("nModelPick").value = c.model || "";
+  document.getElementById("nAdd").textContent = "Güncelle";
+  renderSwatches();
+}
+
+function previewColor(hex) {
+  const input = document.getElementById("nColor");
+  if (!input) return;
+  input.value = hex;
+  const c = state.catalog.find((x) => x.id === editingId);
+  if (c) {
+    c.color = hex;
+    saveCast();
+    scheduleCastApply();
+  }
+  renderSwatches();
 }
 
 function openMascot(open) {
   const m = document.getElementById("mascotModal");
   m.hidden = !open;
-  if (open) { renderMascotPanel(); loadModels(); renderSwatches(); }
+  if (open) {
+    renderMascotPanel();
+    loadModels();
+    renderSwatches();
+    if (!editingId && state.catalog[0]) selectCharacter(state.catalog[0]);
+  }
 }
 
 async function loadModels() {
@@ -2576,6 +2702,16 @@ document.getElementById("sBaseReset").addEventListener("click", () => {
   document.getElementById("sBase").value = "";
   applyProvider(document.getElementById("sProvider").value, true);
 });
+document.getElementById("wheelClose").addEventListener("click", () => { document.getElementById("wheelPop").hidden = true; });
+document.getElementById("wheel").addEventListener("click", pickWheel);
+document.getElementById("wheelPop").addEventListener("click", (e) => {
+  if (e.target.id === "wheelPop") document.getElementById("wheelPop").hidden = true;
+});
+document.getElementById("nSpecies").addEventListener("change", (e) => {
+  const hex = SPECIES_COLORS[e.target.value];
+  if (hex) previewColor(hex);
+});
+
 document.getElementById("sModels").addEventListener("click", loadProviderModels);
 document.getElementById("sAddModel").addEventListener("click", () => {
   const v = (document.getElementById("sModel").value || "").trim();

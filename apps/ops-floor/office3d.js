@@ -31,6 +31,28 @@ function box(w, h, d, color, opts) {
   return m;
 }
 
+/* ---------- stüdyo ortamı (yansıma/gloss için) ---------- */
+function createStudioEnv(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileCubemapShader();
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(0x1e293b);
+  const panel = (w, h, color, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+    m.position.set(...pos);
+    m.lookAt(0, 0, 0);
+    s.add(m);
+  };
+  panel(14, 14, 0xffffff, [0, 7, 0]);
+  panel(10, 10, 0xfff7ed, [6, 3, 6]);
+  panel(9, 9, 0x38bdf8, [-7, 2, 3]);
+  panel(10, 8, 0xc084fc, [0, 4, -7]);
+  panel(14, 14, 0xfde68a, [0, -6, 0]);
+  const tex = pmrem.fromScene(s, 0.04).texture;
+  pmrem.dispose();
+  return tex;
+}
+
 /* ---------- zemin dokusu ---------- */
 function floorTexture(isLight) {
   const c = document.createElement("canvas");
@@ -215,18 +237,19 @@ function makeBoard(x, y) {
    ===================================================================== */
 function mascotMats(hex) {
   const base = new THREE.MeshPhysicalMaterial({
-    color: hex, roughness: 0.42, metalness: 0.0,
-    clearcoat: 0.55, clearcoatRoughness: 0.28,
-    sheen: 0.25, sheenColor: new THREE.Color(0xffffff),
+    color: hex, roughness: 0.32, metalness: 0.0,
+    clearcoat: 0.65, clearcoatRoughness: 0.2,
+    sheen: 0.45, sheenColor: new THREE.Color(0xffffff),
+    envMapIntensity: 0.85,
   });
   return {
     base,
-    white: standard(C.cream, { roughness: 0.65 }),
-    pink: standard(C.pink, { roughness: 0.7 }),
-    dark: standard(0x141b24, { roughness: 0.35 }),
-    orange: standard(0xf0a04a, { roughness: 0.55 }),
+    white: standard(C.cream, { roughness: 0.55, envMapIntensity: 0.7 }),
+    pink: standard(C.pink, { roughness: 0.6, envMapIntensity: 0.7 }),
+    dark: standard(0x141b24, { roughness: 0.22, envMapIntensity: 1.0 }),
+    orange: standard(0xf0a04a, { roughness: 0.5, envMapIntensity: 0.7 }),
     iris: new THREE.MeshStandardMaterial({
-      color: hex, emissive: new THREE.Color(hex), emissiveIntensity: 0.35, roughness: 0.3,
+      color: hex, emissive: new THREE.Color(hex), emissiveIntensity: 0.35, roughness: 0.18, envMapIntensity: 1.0,
     }),
     shine: new THREE.MeshBasicMaterial({ color: 0xffffff }),
   };
@@ -235,8 +258,9 @@ function mascotMats(hex) {
 function makeEye(m, x, y, z) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
+  g.userData.eye = true;
 
-  const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.125, 32, 32), m.dark);
+  const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.145, 32, 32), m.dark);
   sclera.scale.set(0.78, 1.16, 0.7);
   g.add(sclera);
 
@@ -306,6 +330,195 @@ function addAccessory(head, m, kind) {
   }
 }
 
+const FUR_SPECIES = {
+  kizilpanda: { ears: "round", tail: "ring", muzzle: true, mask: null, dark: 0x2a1f1a },
+  panda:      { ears: "round", tail: "stub", muzzle: true, mask: "panda", body: 0xf6f2ea, dark: 0x1b1f26 },
+  rakun:      { ears: "round", tail: "ring", muzzle: true, mask: "band", dark: 0x232a33 },
+  sincap:     { ears: "tuft",  tail: "big",  muzzle: true, dark: 0x3a2418 },
+  maymun:     { ears: "side",  tail: "long", muzzle: true, face: 0xf0d9c0, dark: 0x3a2a20 },
+  tavsan:     { ears: "long",  tail: "puff", muzzle: true, dark: 0xd8cfc4 },
+  ordek:      { ears: "none",  tail: "stub", muzzle: false, bill: true, dark: 0xf0a04a },
+  kaplumbaga: { ears: "none",  tail: "stub", muzzle: false, shell: true, dark: 0x3f6b4a },
+};
+
+function buildFurry(cfg, m, species, accessory) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const parts = { tail: null, head: null, earL: null, earR: null, wings: [], limbs: [] };
+
+  const fur = cfg.body ? standard(cfg.body, { roughness: 0.62 }) : m.base;
+  const dark = standard(cfg.dark || 0x232a33, { roughness: 0.6 });
+
+  const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.4, 20, 32), fur);
+  b.position.y = 0.44;
+  b.rotation.x = Math.PI / 16;
+  b.castShadow = true;
+  body.add(b);
+
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.33, 32, 32), m.white);
+  belly.scale.set(0.9, 1.05, 0.5);
+  belly.position.set(0, 0.4, 0.24);
+  body.add(belly);
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.99, 0.08);
+  body.add(head);
+  parts.head = head;
+
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), fur);
+  h.scale.set(1.1, 1, 1.03);
+  h.castShadow = true;
+  head.add(h);
+
+  addCheeks(head, m, 0.33, -0.09, 0.44);
+
+  // kulaklar
+  if (cfg.ears === "round") {
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 24), cfg.mask === "panda" ? dark : fur);
+      ear.scale.set(1, 1, 0.55);
+      ear.position.set(s * 0.38, 0.42, 0.02);
+      ear.castShadow = true;
+      head.add(ear);
+      if (cfg.mask !== "panda") {
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 18), m.pink);
+        inner.scale.set(1, 1, 0.4);
+        inner.position.set(s * 0.38, 0.42, 0.08);
+        head.add(inner);
+      }
+    }
+  } else if (cfg.ears === "tuft") {
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.32, 16), fur);
+      ear.position.set(s * 0.3, 0.55, 0);
+      ear.rotation.set(-0.1, 0, s * -0.3);
+      head.add(ear);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.18, 12), m.white);
+      tip.position.set(s * 0.33, 0.68, 0);
+      tip.rotation.copy(ear.rotation);
+      head.add(tip);
+    }
+  } else if (cfg.ears === "side") {
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 20), fur);
+      ear.scale.set(0.7, 1, 1);
+      ear.position.set(s * 0.52, 0.08, 0);
+      head.add(ear);
+      const inner = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), m.pink);
+      inner.scale.set(0.6, 1, 1);
+      inner.position.set(s * 0.55, 0.08, 0);
+      head.add(inner);
+    }
+  } else if (cfg.ears === "long") {
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.46, 10, 16), fur);
+      ear.position.set(s * 0.16, 0.62, 0);
+      ear.rotation.z = s * 0.12;
+      ear.castShadow = true;
+      head.add(ear);
+      const inner = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.34, 8, 12), m.pink);
+      inner.position.set(s * 0.16, 0.62, 0.05);
+      inner.rotation.z = s * 0.12;
+      head.add(inner);
+    }
+  }
+
+  // yüz
+  if (cfg.face) {
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.36, 32, 32), standard(cfg.face, { roughness: 0.8 }));
+    face.scale.set(1.05, 0.95, 0.55);
+    face.position.set(0, -0.02, 0.3);
+    head.add(face);
+  }
+  if (cfg.muzzle) {
+    const muz = new THREE.Mesh(new THREE.SphereGeometry(0.22, 28, 28), m.white);
+    muz.scale.set(1.1, 0.8, 0.85);
+    muz.position.set(0, -0.1, 0.4);
+    head.add(muz);
+  }
+  if (cfg.bill) {
+    const bill = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 24), standard(0xf0a04a, { roughness: 0.6 }));
+    bill.scale.set(1.5, 0.45, 1.1);
+    bill.position.set(0, -0.12, 0.5);
+    head.add(bill);
+  }
+  if (cfg.shell) {
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.52, 28, 28), standard(0x4c7a54, { roughness: 0.75 }));
+    shell.scale.set(1.05, 0.62, 0.72);
+    shell.position.set(0, 0.42, -0.3);
+    shell.castShadow = true;
+    body.add(shell);
+  }
+
+  // maske / panda göz lekeleri
+  if (cfg.mask === "band") {
+    const band = new THREE.Mesh(new THREE.SphereGeometry(0.4, 32, 32), dark);
+    band.scale.set(1.02, 0.32, 0.5);
+    band.position.set(0, 0.04, 0.28);
+    head.add(band);
+  } else if (cfg.mask === "panda") {
+    for (const s of [-1, 1]) {
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 24), dark);
+      patch.scale.set(1, 1.15, 0.45);
+      patch.position.set(s * 0.2, 0.06, 0.4);
+      head.add(patch);
+    }
+  }
+
+  head.add(makeEye(m, -0.19, 0.06, 0.44));
+  head.add(makeEye(m, 0.19, 0.06, 0.44));
+
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), cfg.mask === "panda" ? dark : m.pink);
+  nose.scale.set(1.2, 0.8, 0.8);
+  nose.position.set(0, -0.1, 0.5);
+  head.add(nose);
+
+  // patiler
+  for (const s of [-1, 1]) {
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 18), cfg.mask === "panda" ? dark : m.white);
+    paw.scale.set(1, 0.68, 1.2);
+    paw.position.set(s * 0.22, 0.1, 0.22);
+    paw.userData.by = paw.position.y;
+    paw.userData.bz = paw.position.z;
+    body.add(paw);
+    parts.limbs.push(paw);
+  }
+
+  // kuyruk
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.34, -0.34);
+  body.add(tail);
+  parts.tail = tail;
+
+  if (cfg.tail === "ring") {
+    for (let i = 0; i < 3; i++) {
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.13 - i * 0.015, 16, 16), i % 2 ? dark : fur);
+      seg.position.set(0, 0.1 + i * 0.16, -0.08 - i * 0.06);
+      tail.add(seg);
+    }
+  } else if (cfg.tail === "big") {
+    for (let i = 0; i < 4; i++) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.16 + i * 0.05, 20, 20), fur);
+      puff.position.set(0, 0.12 + i * 0.13, -0.12 - i * 0.05);
+      tail.add(puff);
+    }
+  } else if (cfg.tail === "long") {
+    const t = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.45, 8, 12), fur);
+    t.position.set(0, 0.22, -0.14);
+    t.rotation.x = -1.1;
+    tail.add(t);
+  } else {
+    const stub = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 14), m.white);
+    stub.position.set(0, 0.08, -0.06);
+    tail.add(stub);
+  }
+
+  root.scale.setScalar(0.78);
+  addAccessory(head, m, accessory);
+  return { root, parts, mats: m };
+}
+
 function makeMascot(species, hex, accessory = "none") {
   const m = mascotMats(hex);
   const root = new THREE.Group();
@@ -313,6 +526,8 @@ function makeMascot(species, hex, accessory = "none") {
   root.add(body);
 
   const parts = { tail: null, head: null, earL: null, earR: null, wings: [], limbs: [] };
+
+  if (FUR_SPECIES[species]) return buildFurry(FUR_SPECIES[species], m, species, accessory);
 
   if (species === "kus") {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.46, 48, 48), m.base);
@@ -530,6 +745,18 @@ function makeAgent(a) {
 
   const mascot = makeMascot(a.species || "kedi", a.color, a.accessory || "none");
   g.add(mascot.root);
+  if (mascot.parts.head) {
+    const mouth = new THREE.Mesh(
+      new THREE.TorusGeometry(0.08, 0.012, 6, 16, Math.PI),
+      standard(0x2a1a1a, { roughness: 0.5 })
+    );
+    mouth.position.set(0, -0.15, 0.5);
+    mouth.rotation.z = Math.PI;
+    mascot.parts.head.add(mouth);
+  }
+  const eyes = [];
+  mascot.root.traverse((o) => { if (o.userData.eye) eyes.push(o); });
+  mascot.parts.eyes = eyes;
 
   // Opsiyonel GLB/glTF karakter modeli (Sketchfab vb. — lisans kullanıcıya aittir)
   if (a.model) {
@@ -627,6 +854,7 @@ export function createOffice3D(container, state) {
   container.appendChild(renderer.domElement);
 
   scene.add(new THREE.HemisphereLight(0x9db7e0, 0x0a0f18, 1.05));
+  scene.environment = createStudioEnv(renderer);
 
   const hemi = scene.children[scene.children.length - 1];
 
@@ -798,6 +1026,11 @@ export function createOffice3D(container, state) {
     warm.intensity = light ? 0 : 26;
     cool.intensity = light ? 0 : 18;
     for (const m of wallMats) m.color.set(light ? 0xdde5ef : C.wall);
+    for (const m of wallMats) m.envMapIntensity = 0.2;
+    floorMat.envMapIntensity = 0.25;
+    for (const m of deskMats.top) m.envMapIntensity = 0.3;
+    for (const m of deskMats.leg) m.envMapIntensity = 0.3;
+    for (const m of deskMats.chair) m.envMapIntensity = 0.3;
     for (const m of trimMats) m.color.set(light ? 0xc9d4e2 : 0x1a2534);
     for (const m of frameMats) m.color.set(light ? 0xc3cfdd : 0x22303f);
     for (const m of windowMats) m.color.set(light ? 0xdcecff : 0x0e1a2a);
@@ -898,6 +1131,11 @@ export function createOffice3D(container, state) {
       if (mascot.parts.earL) mascot.parts.earL.rotation.z = -0.34 - Math.max(0, Math.sin(now * 0.004 + a.t)) * 0.08;
       if (mascot.parts.earR) mascot.parts.earR.rotation.z = 0.34 + Math.max(0, Math.sin(now * 0.004 + a.t + 1)) * 0.08;
       for (const w of mascot.parts.wings) w.rotation.z += Math.sin(now * 0.006 + a.t) * 0.0015;
+
+      // göz kırpma
+      const bt = (now + a.t * 900) % 4200;
+      const closed = bt < 120;
+      for (const e of mascot.parts.eyes || []) e.scale.y = closed ? 0.12 : 1;
 
       const pulse = 1 + Math.sin(now * 0.004) * (working ? 0.08 : 0.03);
       ring.scale.set(pulse, pulse, pulse);
