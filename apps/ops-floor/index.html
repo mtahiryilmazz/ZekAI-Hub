@@ -103,12 +103,14 @@
   }
 
   /* ---------- alt mesaj paneli ---------- */
-  .composer-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;
+  .composer-bar{display:flex;justify-content:center;align-items:center;padding:9px 16px;
     border-top:1px solid var(--line);background:linear-gradient(0deg,#0b1018,#0a0e15)}
-  .composer-bar textarea{flex:1;min-width:0;min-height:34px;max-height:96px;resize:none;background:#111926;
+  .composer-inner{display:flex;align-items:center;gap:8px;width:min(980px,100%);min-width:0}
+  .composer-inner textarea{flex:1;min-width:0;min-height:34px;max-height:96px;resize:none;background:#111926;
     border:1px solid var(--line-strong);border-radius:9px;color:var(--text);padding:8px 12px;
     font:12.5px/1.4 inherit}
-  .composer-bar .btn{flex:none;padding:8px 18px}
+  .composer-inner .btn{flex:none;min-width:96px;padding:8px 16px}
+  .composer-inner .ctl{flex:none;height:34px;display:inline-flex;align-items:center}
   .routebadge{font:10px var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:7px;
     padding:5px 9px;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;flex:none}
   .routebadge b{color:var(--amber);font-weight:600}
@@ -221,6 +223,7 @@
     border-radius:9px;padding:7px 11px;background:rgba(10,14,20,.72);backdrop-filter:blur(6px)}
   .office-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px;z-index:3}
 
+  @media (max-width:1300px){ .task{display:none} }
   @media (max-width:1240px){ .kpis{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:1000px){ .dgrid{grid-template-columns:1fr} }
 
@@ -320,8 +323,7 @@
   [data-theme="light"] .modal-box header,[data-theme="light"] .modal-box footer{border-color:var(--line)}
   [data-theme="light"] input,[data-theme="light"] select,[data-theme="light"] textarea{
     background:#FFFFFF;color:var(--text);border-color:var(--line-strong)}
-  [data-theme="light"] .composer-bar textarea{background:#F8FAFD}
-  [data-theme="light"] .msg.user{background:rgba(180,83,9,.10);border-color:rgba(180,83,9,.25);color:#6B3F0B}
+  [data-theme="light"] .composer-bar textarea{background:#F8FAFD}  [data-theme="light"] .msg.user{background:rgba(180,83,9,.10);border-color:rgba(180,83,9,.25);color:#6B3F0B}
   [data-theme="light"] .msg.bot{background:rgba(37,99,235,.07);border-color:rgba(37,99,235,.2);color:#1E3A5F}
   [data-theme="light"] .track{background:rgba(16,24,40,.1)}
   [data-theme="light"] .hud,[data-theme="light"] .hint,[data-theme="light"] .office-hint{
@@ -634,10 +636,12 @@
   </div>
 
   <div class="composer-bar">
-    <span class="routebadge" id="routeBadge">Denetçi hazır</span>
-    <textarea id="prompt" rows="1" placeholder="Bir görev yazın… (Enter gönder · Shift+Enter satır)"></textarea>
-    <button class="btn primary" id="btnSend">Gönder</button>
-    <button class="ctl" id="btnSettings" title="Bağlantı ayarları">Ayarlar</button>
+    <div class="composer-inner">
+      <span class="routebadge" id="routeBadge">Denetçi hazır</span>
+      <textarea id="prompt" rows="1" placeholder="Bir görev yazın… (Enter gönder · Shift+Enter satır)"></textarea>
+      <button class="btn primary" id="btnSend">Gönder</button>
+      <button class="ctl" id="btnSettings" title="Bağlantı ayarları">Ayarlar</button>
+    </div>
   </div>
 
   <footer class="pipeline">
@@ -2442,7 +2446,7 @@ function boot() {
   if (p.get("live") === "1") setTimeout(toggleLive, 300);
 
   // ?view=dash|floor|office|list ; yoksa son tercih, varsayılan Panel
-  const map = { flat: "list", dash: "dash", floor: "floor", office: "office", list: "list" };
+  const map = { flat: "list", dash: "dash", tasks: "tasks", floor: "floor", office: "office", list: "list" };
   const wanted = map[p.get("view")] || localStorage.getItem("zk_view") || "dash";
   const savedTheme = localStorage.getItem("zk_theme") ||
     (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
