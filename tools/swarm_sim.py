@@ -405,6 +405,16 @@ class Handler(BaseHTTPRequestHandler):
             self._json(public_cfg())
             return
 
+        if path == "/api/models":
+            files = []
+            models_dir = STATIC_DIR / "models"
+            if models_dir.is_dir():
+                for p in sorted(models_dir.rglob("*")):
+                    if p.is_file() and p.suffix.lower() in (".glb", ".gltf"):
+                        files.append("/models/" + p.relative_to(models_dir).as_posix())
+            self._json({"models": files[:120]})
+            return
+
         if path == "/events":
             q = HUB.register()
             self.send_response(200)

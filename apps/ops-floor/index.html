@@ -224,6 +224,7 @@
   .msg.user{align-self:flex-end;background:rgba(232,180,90,.12);border:1px solid rgba(232,180,90,.28);color:#F1DFC2}
   .msg.bot{align-self:flex-start;background:rgba(111,168,255,.08);border:1px solid rgba(111,168,255,.22);color:#C9D7E8}
   .msg.err{align-self:flex-start;background:rgba(240,138,138,.1);border:1px solid rgba(240,138,138,.3);color:#F0B3B3}
+  .msg.route{align-self:center;background:none;border:0;color:var(--dim);font-size:10px;letter-spacing:.04em;padding:2px}
   .composer{display:flex;gap:8px;align-items:flex-end}
   .composer textarea{flex:1;min-height:38px;max-height:120px;resize:vertical;background:#111926;
     border:1px solid var(--line-strong);border-radius:8px;color:var(--text);padding:9px 10px;font:12px/1.4 inherit}
@@ -374,6 +375,7 @@
       <button class="vbtn" data-view="list" role="tab" aria-selected="false">Liste</button>
     </div>
     <button class="ctl" id="btnMascot" title="Maskot paneli (M)">Maskot</button>
+    <button class="ctl" id="btnTask" title="Görev ver (G)">Görev ver</button>
 
     <div class="task">
       <span class="id" id="taskId">tsk_7f21</span>
@@ -569,7 +571,8 @@
             <option value="hair">Dikenli saç</option>
           </select>
           <input id="nColor" type="color" value="#E8B45A" title="Renk" />
-          <input id="nModel" class="wide" placeholder="Model URL (.glb / .gltf) — opsiyonel" />
+          <select id="nModelPick" class="wide"><option value="">Model seç (models/ klasörü)…</option></select>
+          <input id="nModel" class="wide" placeholder="veya model yolu: /models/karakter.glb" />
           <button class="btn primary wide" id="nAdd">Kataloğa ekle</button>
         </div>
       </section>
@@ -613,6 +616,27 @@
     <footer>
       <button class="mini" id="sClear">Anahtarı sil</button>
       <button class="btn primary" id="sSave">Kaydet</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="taskModal" hidden role="dialog" aria-modal="true" aria-labelledby="tTitle">
+  <div class="modal-box" style="width:min(620px,92vw)">
+    <header>
+      <h2 id="tTitle">Görev ver</h2>
+      <button class="x" id="tClose" aria-label="Kapat">✕</button>
+    </header>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+      <textarea id="taskText" rows="4" placeholder="Ne yapılmasını istiyorsun?&#10;Örn: “Pazar raporunu güncelle ve 3 bulguyu özetle.”"
+        style="background:#111926;border:1px solid var(--line-strong);border-radius:9px;color:var(--text);padding:10px 12px;font:12.5px/1.5 inherit;resize:vertical"></textarea>
+      <div id="taskHint" style="font-size:10.5px;color:var(--dim);line-height:1.5">
+        İş önce <b style="color:var(--muted)">Denetçi</b>'ye gider; konuya göre uzmana dağıtılır.
+        Yönlendirme canlı akışta ve 3D sahnede görünür.
+      </div>
+    </div>
+    <footer>
+      <button class="mini" id="tCancel">Vazgeç</button>
+      <button class="btn primary" id="tSend">Gönder</button>
     </footer>
   </div>
 </div>
@@ -1712,6 +1736,7 @@ function renderMascotPanel() {
       document.getElementById("nAcc").value = c.accessory || "none";
       document.getElementById("nColor").value = c.color;
       document.getElementById("nModel").value = c.model || "";
+      document.getElementById("nModelPick").value = c.model || "";
       document.getElementById("nAdd").textContent = "Güncelle";
     });
     cl.appendChild(card);
@@ -1723,7 +1748,33 @@ let editingId = null;
 function openMascot(open) {
   const m = document.getElementById("mascotModal");
   m.hidden = !open;
-  if (open) renderMascotPanel();
+  if (open) { renderMascotPanel(); loadModels(); }
+}
+
+async function loadModels() {
+  const sel = document.getElementById("nModelPick");
+  if (!sel) return;
+  try {
+    const r = await fetch("/api/models");
+    const d = await r.json();
+    sel.textContent = "";
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "Model seç (models/ klasörü)…";
+    sel.appendChild(none);
+    for (const m of d.models || []) {
+      const o = document.createElement("option");
+      o.value = m;
+      o.textContent = m.replace("/models/", "");
+      sel.appendChild(o);
+    }
+    if (!(d.models || []).length) {
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "(models/ boş — .glb koyun)";
+      sel.appendChild(o);
+    }
+  } catch (e) { /* sunucu yoksa serbest metin kalır */ }
 }
 
 /* ---------- bağlantı ayarları + görev konsolu ---------- */
@@ -1801,37 +1852,66 @@ function appendMsg(kind, text) {
 
 let chatBusy = false;
 
-async function sendPrompt() {
+const ROUTES = [
+  { id: "planner",    re: /(plan|adım|yol harita|takvim|sırala|organize)/i },
+  { id: "researcher", re: /(araştır|kaynak|web|internet|incele|topla|\bbul\b|\bbulmak\b)/i },
+  { id: "analyst",    re: /(analiz|karşılaştır|veri|metrik|rapor|özet|sayı)/i },
+  { id: "builder",    re: /(kod|yaz|oluştur|düzelt|uygula|dosya|kur|ekle)/i },
+  { id: "reviewer",   re: /(test|kontrol|doğrula|gözden geçir|hata|denetle)/i },
+];
+
+function routeAgent(text) {
+  for (const r of ROUTES) if (r.re.test(text)) return r.id;
+  return "supervisor";
+}
+
+function openTask(open) {
+  const m = document.getElementById("taskModal");
+  m.hidden = !open;
+  if (open) setTimeout(() => document.getElementById("taskText").focus(), 30);
+}
+
+async function sendPrompt(raw) {
   const input = document.getElementById("prompt");
-  const text = (input.value || "").trim();
+  const text = (raw !== undefined ? String(raw) : input.value || "").trim();
   if (!text || chatBusy) return;
   chatBusy = true;
-  input.value = "";
+  if (raw === undefined) input.value = "";
   appendMsg("user", text);
   chatHistory.push({ role: "user", content: text });
 
-  emit("task.created", "supervisor", "İstem: " + text.slice(0, 66), { status: "çalışıyor" });
+  const target = routeAgent(text);
+  const agent = state.agents[target];
+  appendMsg("route", "Denetçi → " + agent.name);
+
+  emit("task.created", "supervisor", "İstem alındı: " + text.slice(0, 56), { status: "çalışıyor" });
+  emit("agent.started", target, "Görev atandı · " + agent.role.toLowerCase(), { status: "çalışıyor" });
+  state.agents.supervisor.status = "boşta";
   setPipeline(0);
 
   const btn = document.getElementById("btnSend");
   btn.disabled = true;
   btn.textContent = "…";
   try {
+    const messages = [
+      { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Kısa, Türkçe ve uygulanabilir yanıt ver." },
+      ...chatHistory.slice(-6),
+    ];
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: chatHistory.slice(-8) }),
+      body: JSON.stringify({ messages }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "istek başarısız");
     appendMsg("bot", d.text || "(boş yanıt)");
     chatHistory.push({ role: "assistant", content: d.text || "" });
-    emit("model.completed", "supervisor", (d.model || "model") + " · yanıt geldi", {
+    emit("model.completed", target, (d.model || "model") + " · yanıt geldi", {
       cost: d.cost_usd || 0, tokens: (d.usage && d.usage.out) || 0, severity: "ok",
     });
-    emit("task.completed", "supervisor", "Yanıt teslim edildi", { severity: "ok" });
+    emit("task.completed", target, "Yanıt teslim edildi", { severity: "ok" });
   } catch (e) {
     appendMsg("err", String(e.message || e));
-    emit("task.failed", "supervisor", "İstem başarısız: " + String(e.message || e), { severity: "err" });
+    emit("task.failed", target, "İstem başarısız: " + String(e.message || e), { severity: "err" });
   } finally {
     chatBusy = false;
     btn.disabled = false;
@@ -1942,6 +2022,9 @@ document.getElementById("qNo").addEventListener("click", () => decideApproval(fa
 document.getElementById("btnMascot").addEventListener("click", () => openMascot(true));
 document.getElementById("mClose").addEventListener("click", () => openMascot(false));
 document.getElementById("mApply").addEventListener("click", () => { applyCast(); openMascot(false); });
+document.getElementById("nModelPick").addEventListener("change", (e) => {
+  if (e.target.value) document.getElementById("nModel").value = e.target.value;
+});
 document.getElementById("nAdd").addEventListener("click", () => {
   const name = (document.getElementById("nName").value || "").trim();
   if (!name) return;
@@ -1984,9 +2067,26 @@ document.getElementById("sClear").addEventListener("click", async () => {
 document.getElementById("settingsModal").addEventListener("click", (e) => {
   if (e.target.id === "settingsModal") openSettings(false);
 });
-document.getElementById("btnSend").addEventListener("click", sendPrompt);
+document.getElementById("btnSend").addEventListener("click", () => sendPrompt());
 document.getElementById("prompt").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+});
+
+document.getElementById("btnTask").addEventListener("click", () => openTask(true));
+document.getElementById("tClose").addEventListener("click", () => openTask(false));
+document.getElementById("tCancel").addEventListener("click", () => openTask(false));
+document.getElementById("tSend").addEventListener("click", () => {
+  const v = document.getElementById("taskText").value;
+  if (!v.trim()) return;
+  document.getElementById("taskText").value = "";
+  openTask(false);
+  sendPrompt(v);
+});
+document.getElementById("taskText").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.getElementById("tSend").click(); }
+});
+document.getElementById("taskModal").addEventListener("click", (e) => {
+  if (e.target.id === "taskModal") openTask(false);
 });
 
 window.addEventListener("keydown", (e) => {
@@ -1998,6 +2098,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "k") toggleFlat();
   if (e.key.toLowerCase() === "l") toggleLive();
   if (e.key.toLowerCase() === "m") openMascot(document.getElementById("mascotModal").hidden);
+  if (e.key.toLowerCase() === "g") openTask(document.getElementById("taskModal").hidden);
   if (e.key === "Escape") openMascot(false);
   if (e.key.toLowerCase() === "v") {
     const order = ["dash", "floor", "office", "list"];

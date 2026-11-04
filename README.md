@@ -34,7 +34,25 @@ Katalogdaki hazır karakterler **özgün arketiplerdir**; telifli karakterlerin 
 modelleri repoya dahil edilmez. Kendi karakterinizi ekleyebilir veya lisansı uygun bir
 GLB model bağlayabilirsiniz.
 
-## Görev konsolu ve bağlantı ayarları
+## Görev verme ve yönlendirme
+
+Mesaj alanı her görünümden erişilir: üstteki **Görev ver** düğmesi (`G`), 3D/2D sahnede
+ve panelde. Panelde ayrıca kalıcı bir **Görev konsolu** var.
+
+İş önce **Denetçi**'ye gider, sonra konuya göre uzmana dağıtılır ve bu **görünür**:
+
+```
+Sen → Denetçi → (plan | kaynak | analiz | kod | doğrulama) → uzman ajan
+```
+
+- Konsolda `Denetçi → Analist` satırı, canlı akışta `agent.started` olayı, 3D sahnede
+o ajanın masasına yürümesi ve çalışması.
+- Yönlendirme şimdilik **kural tabanlı bir demo**dır (anahtar kelime → rol). Gerçek
+  platformda bu kararı Supervisor + Policy Engine verir; arayüz aynı olayları tüketir.
+- Yanıt geldiğinde `model.completed` ile token/maliyet işlenir, `task.completed` ile ajan
+  boşa döner.
+
+## Bağlantı ayarları
 
 Panelin altındaki **Görev konsolu**'ndan istem gönderilir; yanıt ofiste olay olarak akar
 (maliyet/token sayacı gerçek yanıttan gelir). **Bağlantı ayarları**: sağlayıcı
