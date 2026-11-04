@@ -520,9 +520,11 @@ function makeAgent(a) {
           obj.position.y -= box.min.y;
           mascot.root.visible = false;
           g.add(obj);
+          g.userData.modelFailed = false;
         },
         undefined,
         () => {
+          g.userData.modelFailed = true;
           window.dispatchEvent(new CustomEvent("zk-model-error", { detail: { agent: a.name, url: src, reason: "model yüklenemedi (404 / CORS / geçersiz GLB)" } }));
         }
       );
@@ -802,6 +804,7 @@ export function createOffice3D(container, state) {
       const pulse = 1 + Math.sin(now * 0.004) * (working ? 0.08 : 0.03);
       ring.scale.set(pulse, pulse, pulse);
       ringMat.opacity = working ? 0.9 : waiting ? 0.7 : 0.35;
+      ringMat.color.set(g.userData.modelFailed ? 0xf08a8a : a.color);
       halo.material.opacity = working ? 0.05 + Math.sin(now * 0.003) * 0.02 : 0;
 
       const scr = a.__screen;

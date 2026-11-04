@@ -367,8 +367,21 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
         )
 
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode())
+        data = None
+        last_err = None
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode())
+                break
+            except urllib.error.HTTPError as exc:
+                last_err = exc
+                if exc.code in (429, 503) and attempt == 0:
+                    time.sleep(1.5)
+                    continue
+                raise
+        if data is None:
+            raise last_err or ValueError("boş yanıt")
     except urllib.error.HTTPError as exc:
         detail = ""
         try:
