@@ -27,11 +27,25 @@ arayüz kararı `docs/ADR-011-sunum-katmani.md` içinde.
 
 `Maskot` düğmesi (veya `M`): görev rollerine karakter atama, katalogdan ekleme/çıkarma,
 ad/tür (kedi, köpek, kuş), aksesuar (bandana, şapka, dikenli saç) ve renk seçimi.
-Değişiklikler anında 3D sahneye uygulanır ve tarayıcıda saklanır.
+Değişiklikler anında 3D sahneye uygulanır ve tarayıcıda saklanır. Bir karakter silinirse
+ona atanmış roller otomatik olarak kalan ilk karaktere geçer.
 
 Katalogdaki hazır karakterler **özgün arketiplerdir**; telifli karakterlerin birebir
 modelleri repoya dahil edilmez. Kendi karakterinizi ekleyebilir veya lisansı uygun bir
 GLB model bağlayabilirsiniz.
+
+## Görev konsolu ve bağlantı ayarları
+
+Panelin altındaki **Görev konsolu**'ndan istem gönderilir; yanıt ofiste olay olarak akar
+(maliyet/token sayacı gerçek yanıttan gelir). **Bağlantı ayarları**: sağlayıcı
+(Mock / OpenAI-uyumlu / Anthropic), model, base URL ve API anahtarı.
+
+- **Mock** anahtarsız çalışır; akışı hemen denemek için varsayılandır.
+- Anahtar tarayıcıya değil, yerel sunucuya gönderilir ve `~/.zekai/config.json` içinde
+  saklanır; API yanıtlarında asla geri dönmez.
+- Bu bir prototiptir: dosya diskte düz metindir. Üretimde OS keychain / Secret Vault
+  (ADR-005, §17) zorunludur; anahtarı repoya veya `.env`'e koymayın.
+- Sağlayıcı çağrıları sunucu tarafından yapılır (CORS ve anahtar sızması önlenir).
 
 ## Hızlı başlangıç
 
