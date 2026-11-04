@@ -36,9 +36,9 @@ function floorTexture(isLight) {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const g = c.getContext("2d");
-  g.fillStyle = isLight ? "#e8eef7" : "#101823";
+  g.fillStyle = isLight ? "#e2e9f3" : "#101823";
   g.fillRect(0, 0, 128, 128);
-  g.strokeStyle = isLight ? "rgba(16,24,40,0.10)" : "rgba(130,165,205,0.10)";
+  g.strokeStyle = isLight ? "rgba(16,24,40,0.12)" : "rgba(130,165,205,0.10)";
   g.lineWidth = 2;
   g.strokeRect(0, 0, 128, 128);
   g.fillStyle = isLight ? "rgba(16,24,40,0.025)" : "rgba(255,255,255,0.018)";
@@ -57,11 +57,13 @@ function makeDesk(x, y, color) {
 
   const top = box(1.9, 0.08, 0.95, C.deskTop);
   top.position.y = 0.62;
+  top.userData.role = "top";
   g.add(top);
 
   for (const [lx, lz] of [[-0.85, -0.4], [0.85, -0.4], [-0.85, 0.4], [0.85, 0.4]]) {
     const leg = box(0.07, 0.6, 0.07, C.deskLeg);
     leg.position.set(lx, 0.3, lz);
+    leg.userData.role = "leg";
     g.add(leg);
   }
 
@@ -93,9 +95,11 @@ function makeDesk(x, y, color) {
 
   const chair = box(0.46, 0.07, 0.46, 0x1b2431);
   chair.position.set(0, 0.42, 0.78);
+  chair.userData.role = "chair";
   g.add(chair);
   const back = box(0.46, 0.42, 0.06, 0x1b2431);
   back.position.set(0, 0.65, 1.0);
+  back.userData.role = "chair";
   g.add(back);
 
   g.userData.screenMat = screenMat;
@@ -468,6 +472,23 @@ function makeMascot(species, hex, accessory = "none") {
   return { root, parts, mats: m };
 }
 
+/* ---------- yumuşak temas gölgesi ---------- */
+let SHADOW_TEX = null;
+function shadowTexture() {
+  if (SHADOW_TEX) return SHADOW_TEX;
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  const rg = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+  rg.addColorStop(0, "rgba(0,0,0,0.55)");
+  rg.addColorStop(0.55, "rgba(0,0,0,0.22)");
+  rg.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = rg;
+  g.fillRect(0, 0, 128, 128);
+  SHADOW_TEX = new THREE.CanvasTexture(c);
+  return SHADOW_TEX;
+}
+
 /* ---------- ajan ---------- */
 function makeAgent(a) {
   const g = new THREE.Group();
@@ -523,6 +544,14 @@ function makeAgent(a) {
   halo.position.y = 0.7;
   g.add(halo);
 
+  const contact = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.15, 1.15),
+    new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, opacity: 0.36, depthWrite: false })
+  );
+  contact.rotation.x = -Math.PI / 2;
+  contact.position.y = 0.013;
+  g.add(contact);
+
   const cv = document.createElement("canvas");
   cv.width = 512; cv.height = 128;
   const ctx = cv.getContext("2d");
@@ -538,7 +567,7 @@ function makeAgent(a) {
   sprite.scale.set(1.5, 0.37, 1);
   g.add(sprite);
 
-  g.userData = { mascot, ring, ringMat, halo, sprite };
+  g.userData = { mascot, ring, ringMat, halo, sprite, contact };
   return g;
 }
 
@@ -575,6 +604,7 @@ export function createOffice3D(container, state) {
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 60;
   key.shadow.bias = -0.0008;
+  key.shadow.normalBias = 0.02;
   scene.add(key);
 
   const warm = new THREE.PointLight(C.amber, 26, 18, 2);
@@ -630,6 +660,11 @@ export function createOffice3D(container, state) {
     scene.add(desk);
     a.__screen = desk.userData.screenMat;
   }
+
+  const deskMats = { top: [], leg: [], chair: [] };
+  scene.traverse((o) => {
+    if (o.isMesh && o.userData.role && deskMats[o.userData.role]) deskMats[o.userData.role].push(o.material);
+  });
   scene.add(makePlant(0.9, 0.8));
   scene.add(makePlant(17.2, 12.9));
   scene.add(makePlant(8.4, 0.8));
@@ -639,26 +674,38 @@ export function createOffice3D(container, state) {
   scene.add(makeRack(15.9, 9.2));
 
   const avatars = {};
+  const contacts = [];
   for (const a of Object.values(state.agents)) {
     const g = makeAgent(a);
     g.position.set(toX(a.x), 0, toZ(a.y));
     scene.add(g);
     avatars[a.id] = g;
+    if (g.userData.contact) contacts.push(g.userData.contact);
   }
 
   /* ---------- tema / görünürlük ---------- */
   function applyTheme() {
     const light = document.documentElement.dataset.theme === "light";
-    const bg = new THREE.Color(light ? 0xdfe8f2 : 0x070a10);
+    const bg = new THREE.Color(light ? 0xd8e3f0 : 0x070a10);
     scene.background = bg;
     scene.fog.color = bg;
-    renderer.toneMappingExposure = light ? 1.0 : 1.15;
-    hemi.intensity = light ? 1.15 : 1.05;
-    key.intensity = light ? 1.6 : 1.55;
-    fill.intensity = light ? 0.55 : 0.35;
-    warm.intensity = light ? 8 : 26;
-    cool.intensity = light ? 6 : 18;
+    scene.fog.near = light ? 44 : 32;
+    scene.fog.far = light ? 96 : 70;
+    renderer.toneMappingExposure = light ? 1.02 : 1.15;
+    hemi.color.set(light ? 0xf2f7ff : 0x9db7e0);
+    hemi.groundColor.set(light ? 0xc6d2e0 : 0x0a0f18);
+    hemi.intensity = light ? 1.05 : 1.05;
+    key.color.set(light ? 0xfff3df : 0xffe0b0);
+    key.intensity = light ? 2.1 : 1.55;
+    fill.intensity = light ? 0.35 : 0.35;
+    warm.intensity = light ? 0 : 26;
+    cool.intensity = light ? 0 : 18;
     for (const m of wallMats) m.color.set(light ? 0xdde5ef : C.wall);
+    for (const m of deskMats.top) m.color.set(light ? 0xcfd9e6 : 0x2b3648);
+    for (const m of deskMats.leg) m.color.set(light ? 0xb3c1d2 : 0x1a2230);
+    for (const m of deskMats.chair) m.color.set(light ? 0xc3cedd : 0x1b2431);
+    floorMat.roughness = light ? 0.98 : 0.95;
+    for (const c of contacts) c.material.opacity = light ? 0.22 : 0.36;
     if (floorMat.map) floorMat.map.dispose();
     floorMat.map = floorTexture(light);
     floorMat.needsUpdate = true;
@@ -680,6 +727,7 @@ export function createOffice3D(container, state) {
   let drag = null;
   const el = renderer.domElement;
   el.style.cursor = "grab";
+  el.style.touchAction = "none";
   el.addEventListener("pointerdown", (e) => {
     drag = { x: e.clientX, y: e.clientY };
     el.setPointerCapture(e.pointerId);
@@ -689,7 +737,7 @@ export function createOffice3D(container, state) {
     if (!drag) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag = { x: e.clientX, y: e.clientY };
-    theta -= dx * 0.005;
+    theta += dx * 0.005;
     phi = Math.max(0.3, Math.min(1.3, phi - dy * 0.004));
     apply();
   });
