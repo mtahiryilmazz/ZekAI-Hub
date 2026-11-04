@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -34,7 +34,7 @@
     -webkit-font-smoothing:antialiased;overflow:hidden;
   }
   button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-  .app{display:grid;grid-template-rows:56px 1fr 74px;height:100vh}
+  .app{display:grid;grid-template-rows:56px 1fr 58px 74px;height:100vh}
 
   /* ---------- top bar ---------- */
   .topbar{
@@ -62,7 +62,7 @@
   .metrics{display:flex;align-items:center;gap:18px}
   .metric{display:flex;flex-direction:column;line-height:1.15}
   .metric label{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
-  .metric b{font-family:var(--mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .metric b{font-family:var(--mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
   .metric b.amber{color:var(--amber)}
   .mode{
     display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;
@@ -101,6 +101,49 @@
     position:absolute;right:16px;bottom:14px;z-index:3;color:var(--dim);font-size:10.5px;
     border:1px solid var(--line);border-radius:9px;padding:7px 11px;background:rgba(10,14,20,.72);
   }
+
+  /* ---------- alt mesaj paneli ---------- */
+  .composer-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;
+    border-top:1px solid var(--line);background:linear-gradient(0deg,#0b1018,#0a0e15)}
+  .composer-bar textarea{flex:1;min-width:0;min-height:34px;max-height:96px;resize:none;background:#111926;
+    border:1px solid var(--line-strong);border-radius:9px;color:var(--text);padding:8px 12px;
+    font:12.5px/1.4 inherit}
+  .composer-bar .btn{flex:none;padding:8px 18px}
+  .routebadge{font:10px var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:7px;
+    padding:5px 9px;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;flex:none}
+  .routebadge b{color:var(--amber);font-weight:600}
+  @media (max-width:900px){ .routebadge{display:none} }
+  @media (max-width:1250px){ .routebadge{max-width:200px} .metrics .metric:nth-child(3){display:none} }
+
+  /* ---------- görev geçmişi ---------- */
+  .tasks{position:absolute;inset:0;overflow:auto;padding:18px 20px;z-index:2}
+  .tasks[hidden]{display:none}
+  .tasks-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;align-items:start}
+  .trow{display:grid;grid-template-columns:54px 1fr auto;gap:8px;padding:8px 6px;border-top:1px solid var(--line);
+    cursor:pointer;border-radius:6px;align-items:center}
+  .trow:first-child{border-top:0}
+  .trow:hover{background:rgba(255,255,255,.03)}
+  .trow.sel{background:rgba(232,180,90,.09)}
+  .trow .tt{font:9.5px var(--mono);color:var(--dim)}
+  .trow .tp{font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trow .ts{font:9.5px var(--mono);color:var(--muted)}
+  .tpill{font-size:8.5px;padding:1px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
+  .tpill.run{background:rgba(232,180,90,.15);color:var(--amber)}
+  .tpill.ok{background:rgba(111,211,192,.14);color:var(--teal)}
+  .tpill.err{background:rgba(240,138,138,.14);color:var(--rose)}
+  .tdetail{font-size:11.5px;line-height:1.6;color:var(--muted);white-space:pre-wrap;max-height:56vh;overflow:auto}
+  .tdetail .plan{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;white-space:normal}
+  .tdetail .chip{font:9.5px var(--mono);border:1px solid var(--line-strong);border-radius:5px;padding:2px 6px;color:var(--muted)}
+  .tdetail h4{margin:10px 0 4px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .tdetail .res{white-space:pre-wrap;color:var(--text);font-size:11.5px}
+  [data-theme="light"] .tasks{background:linear-gradient(180deg,#F7F9FC,#EEF2F8)}
+  [data-theme="light"] .trow:hover{background:rgba(16,24,40,.03)}
+  [data-theme="light"] .tdetail .res{color:#1E293B}
+  [data-theme="light"] .route .edge{stroke:rgba(16,24,40,.14)}
+  [data-theme="light"] .route .node{fill:#FFFFFF;stroke:rgba(16,24,40,.28)}
+  [data-theme="light"] .route .node.done{fill:rgba(15,118,110,.14);stroke:rgba(15,118,110,.75)}
+  [data-theme="light"] .route .node.active{fill:rgba(180,83,9,.14);stroke:rgba(180,83,9,.85)}
+  [data-theme="light"] .route .node-lbl{fill:#334155}
   kbd{
     font-family:var(--mono);font-size:9.5px;padding:1px 4px;border-radius:4px;
     border:1px solid var(--line-strong);color:var(--muted);background:rgba(255,255,255,.04);
@@ -243,6 +286,47 @@
   .setnote b{color:var(--muted);font-weight:600}
   @media (max-width:820px){ .mbody{grid-template-columns:1fr} }
 
+  /* ---------- tema ---------- */
+  .ico-moon{display:none}
+  [data-theme="light"] .ico-moon{display:block}
+  [data-theme="light"] .ico-sun{display:none}
+  [data-theme="light"] .iconbtn{color:var(--muted)}
+
+  [data-theme="light"]{
+    --bg:#EEF2F8; --surface:#FFFFFF; --surface-2:#F6F8FC;
+    --line:rgba(16,24,40,.10); --line-strong:rgba(16,24,40,.18);
+    --text:#0F172A; --muted:#55647C; --dim:#7D8AA0;
+    --amber:#B45309; --teal:#0F766E; --blue:#1D4ED8; --violet:#6D28D9; --green:#15803D; --rose:#B91C1C;
+  }
+  [data-theme="light"] body{background:var(--bg);color:var(--text)}
+  [data-theme="light"] .topbar{background:linear-gradient(180deg,#FFFFFF,#F7F9FC)}
+  [data-theme="light"] .rail{background:#FFFFFF}
+  [data-theme="light"] .composer-bar{background:#FFFFFF}
+  [data-theme="light"] .pipeline{background:#FFFFFF}
+  [data-theme="light"] .task,[data-theme="light"] .views{background:rgba(16,24,40,.04)}
+  [data-theme="light"] .vbtn.on{background:rgba(180,83,9,.12);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(180,83,9,.28)}
+  [data-theme="light"] .mode{background:rgba(180,83,9,.08)}
+  [data-theme="light"] .dash,[data-theme="light"] .flat{background:linear-gradient(180deg,#F7F9FC,#EEF2F8)}
+  [data-theme="light"] .kpi,[data-theme="light"] .panel,[data-theme="light"] .card{background:#FFFFFF;border-color:var(--line)}
+  [data-theme="light"] .kpi .s,[data-theme="light"] .health td,[data-theme="light"] .alerts li{color:#5B6B82}
+  [data-theme="light"] .health .nm,[data-theme="light"] .panel h2{color:#33415A}
+  [data-theme="light"] .feed .m{color:#334155}
+  [data-theme="light"] .feed .t,[data-theme="light"] .feed .c{color:#94A3B8}
+  [data-theme="light"] .feed li:hover{background:rgba(16,24,40,.03)}
+  [data-theme="light"] .approval{background:linear-gradient(180deg,#FFF7E8,#FFFCF4);border-color:rgba(180,83,9,.35)}
+  [data-theme="light"] .approval p{color:#7A5B2E}
+  [data-theme="light"] .approval code{background:rgba(180,83,9,.08);color:#7A4A0F}
+  [data-theme="light"] .modal-box{background:#FFFFFF}
+  [data-theme="light"] .modal-box header,[data-theme="light"] .modal-box footer{border-color:var(--line)}
+  [data-theme="light"] input,[data-theme="light"] select,[data-theme="light"] textarea{
+    background:#FFFFFF;color:var(--text);border-color:var(--line-strong)}
+  [data-theme="light"] .composer-bar textarea{background:#F8FAFD}
+  [data-theme="light"] .msg.user{background:rgba(180,83,9,.10);border-color:rgba(180,83,9,.25);color:#6B3F0B}
+  [data-theme="light"] .msg.bot{background:rgba(37,99,235,.07);border-color:rgba(37,99,235,.2);color:#1E3A5F}
+  [data-theme="light"] .track{background:rgba(16,24,40,.1)}
+  [data-theme="light"] .hud,[data-theme="light"] .hint,[data-theme="light"] .office-hint{
+    background:rgba(255,255,255,.86);border-color:var(--line);color:#55647C}
+
   /* flat / accessible view */
   .flat{
     position:absolute;inset:0;z-index:4;padding:22px;overflow:auto;
@@ -370,16 +454,16 @@
 
     <div class="views" role="tablist" aria-label="Görünüm seçici">
       <button class="vbtn on" data-view="dash" role="tab" aria-selected="true">Panel</button>
+      <button class="vbtn" data-view="tasks" role="tab" aria-selected="false">Görevler</button>
       <button class="vbtn" data-view="floor" role="tab" aria-selected="false">Saha</button>
       <button class="vbtn" data-view="office" role="tab" aria-selected="false">Ofis 3D</button>
       <button class="vbtn" data-view="list" role="tab" aria-selected="false">Liste</button>
     </div>
     <button class="ctl" id="btnMascot" title="Maskot paneli (M)">Maskot</button>
-    <button class="ctl" id="btnTask" title="Görev ver (G)">Görev ver</button>
 
     <div class="task">
       <span class="id" id="taskId">tsk_7f21</span>
-      <span class="title" id="taskTitle">Pazar raporunu güncelle ve özetle</span>
+      <span class="title" id="taskTitle">Demo · Pazar raporunu güncelle ve özetle</span>
     </div>
 
     <div class="spacer"></div>
@@ -389,6 +473,10 @@
       <div class="metric"><label>Token</label><b id="tokens">0</b></div>
       <div class="metric"><label>Aktif model</label><b id="model">T2 · Sonnet 5.5</b></div>
       <div class="mode" id="mode"><span class="dot"></span><span id="modeText">Simülasyon</span></div>
+      <button class="iconbtn" id="btnTheme" title="Tema (T)" aria-label="Tema değiştir">
+        <svg class="ico ico-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <svg class="ico ico-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6.5 6.5 0 0 0 8.268 8.268c.344-.215.825-.003.803.401"/></svg>
+      </button>
     </div>
   </header>
 
@@ -474,14 +562,30 @@
 
         <section class="panel console">
           <h2>Görev konsolu <span id="chatState">mock · yapılandırılmadı</span>
-            <button class="mini" id="btnSettings">Bağlantı ayarları</button>
+            <button class="mini" id="btnSettingsTop">Bağlantı ayarları</button>
           </h2>
           <div class="chat" id="chatLog"></div>
-          <div class="composer">
-            <textarea id="prompt" rows="1" placeholder="Bir görev yazın… (Enter gönder · Shift+Enter satır)"></textarea>
-            <button class="btn primary" id="btnSend">Gönder</button>
-          </div>
         </section>
+      </div>
+
+      <div class="tasks" id="tasksView" hidden>
+        <div class="dash-head">
+          <div>
+            <h1>Görevler</h1>
+            <p class="sub">Verdiğin her görev, planı, durumu ve sonucu.</p>
+          </div>
+          <button class="mini" id="btnClearTasks">Geçmişi temizle</button>
+        </div>
+        <div class="tasks-grid">
+          <section class="panel">
+            <h2>Geçmiş <span id="taskCount">0</span></h2>
+            <div id="taskList"></div>
+          </section>
+          <section class="panel">
+            <h2>Sonuç <span id="taskDetailMeta"></span></h2>
+            <div id="taskDetailBody" class="tdetail">Bir görev seç.</div>
+          </section>
+        </div>
       </div>
 
       <div id="office3d" hidden></div>
@@ -527,6 +631,13 @@
       <button class="btn primary" id="apYes">Onayla</button>
       <button class="btn danger" id="apNo">Reddet</button>
     </div>
+  </div>
+
+  <div class="composer-bar">
+    <span class="routebadge" id="routeBadge">Denetçi hazır</span>
+    <textarea id="prompt" rows="1" placeholder="Bir görev yazın… (Enter gönder · Shift+Enter satır)"></textarea>
+    <button class="btn primary" id="btnSend">Gönder</button>
+    <button class="ctl" id="btnSettings" title="Bağlantı ayarları">Ayarlar</button>
   </div>
 
   <footer class="pipeline">
@@ -607,6 +718,11 @@
       <label class="wide">API anahtarı
         <input id="sKey" type="password" placeholder="sk-... (kayıtlıysa boş bırakın)" autocomplete="off" />
       </label>
+      <div class="wide" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <label>T1 · ucuz<input id="sT1" placeholder="gpt-4o-mini" /></label>
+        <label>T2 · işçi<input id="sT2" placeholder="gpt-4o" /></label>
+        <label>T3 · plan<input id="sT3" placeholder="claude-sonnet-4-20250514" /></label>
+      </div>
       <div class="setnote">
         Anahtar yalnızca bu bilgisayardaki <code>~/.zekai/config.json</code> dosyasında saklanır;
         tarayıcıya geri döndürülmez ve repoya girmez. Üretimde Secret Vault / OS keychain kullanılmalıdır.
@@ -616,27 +732,6 @@
     <footer>
       <button class="mini" id="sClear">Anahtarı sil</button>
       <button class="btn primary" id="sSave">Kaydet</button>
-    </footer>
-  </div>
-</div>
-
-<div class="modal" id="taskModal" hidden role="dialog" aria-modal="true" aria-labelledby="tTitle">
-  <div class="modal-box" style="width:min(620px,92vw)">
-    <header>
-      <h2 id="tTitle">Görev ver</h2>
-      <button class="x" id="tClose" aria-label="Kapat">✕</button>
-    </header>
-    <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-      <textarea id="taskText" rows="4" placeholder="Ne yapılmasını istiyorsun?&#10;Örn: “Pazar raporunu güncelle ve 3 bulguyu özetle.”"
-        style="background:#111926;border:1px solid var(--line-strong);border-radius:9px;color:var(--text);padding:10px 12px;font:12.5px/1.5 inherit;resize:vertical"></textarea>
-      <div id="taskHint" style="font-size:10.5px;color:var(--dim);line-height:1.5">
-        İş önce <b style="color:var(--muted)">Denetçi</b>'ye gider; konuya göre uzmana dağıtılır.
-        Yönlendirme canlı akışta ve 3D sahnede görünür.
-      </div>
-    </div>
-    <footer>
-      <button class="mini" id="tCancel">Vazgeç</button>
-      <button class="btn primary" id="tSend">Gönder</button>
     </footer>
   </div>
 </div>
@@ -715,9 +810,11 @@ const state = {
   pipeline: ["idle", "idle", "idle", "idle", "idle"],
   zonePressure: {},
   log: [],
+  tasks: [],
   costSeries: [0],
   approvals: { required: 0, approved: 0, rejected: 0 },
   lastDecision: null,
+  demo: true,
   catalog: (typeof DEFAULT_CATALOG !== "undefined" ? DEFAULT_CATALOG : []).map((c) => ({ ...c })),
   cast: (typeof DEFAULT_CAST !== "undefined" ? DEFAULT_CAST : {}),
 };
@@ -777,7 +874,7 @@ function resize() {
 
   const diamondW = (W + H) * (TW / 2);
   const diamondH = (W + H) * (TH / 2) + WALL_H * TH;
-  view.scale = Math.max(0.55, Math.min(1.45, Math.min((w - 64) / diamondW, (h - 60) / diamondH)));
+  view.scale = Math.max(0.55, Math.min(1.75, Math.min((w - 28) / diamondW, (h - 24) / diamondH)));
   view.ox = w / 2;
   view.oy = h / 2 - ((W + H) * TH / 4) * view.scale + 18;
   view.as = Math.max(0.85, Math.min(1.3, view.scale));
@@ -1222,6 +1319,7 @@ let continueSteps = null;
 function tickSim(dt) {
   if (state.paused || state.pendingApproval) return;
   if (state.live) return;
+  if (!state.demo) return;
   simTime += dt * state.speed;
 
   const list = continueSteps || STEPS;
@@ -1240,6 +1338,7 @@ function tickSim(dt) {
 }
 
 function startScenario() {
+  if (!state.demo) return;
   scenarioNo++;
   state.taskId = "tsk_" + Math.random().toString(36).slice(2, 6);
   document.getElementById("taskId").textContent = state.taskId;
@@ -1342,6 +1441,7 @@ function addFeedEvent(e) {
     cost: e.cost || 0,
     severity: e.severity || "info",
     time: time.textContent,
+    taskId: state.taskId,
   });
   if (state.log.length > 400) state.log.shift();
   if (e.type !== "system") {
@@ -1439,9 +1539,10 @@ const officeEl = document.getElementById("office3d");
 const officeHint = document.getElementById("officeHint");
 const floorEl = document.getElementById("floor");
 const flatEl = document.getElementById("flat");
+const tasksEl = document.getElementById("tasksView");
 const hudEl = document.querySelector(".hud");
 const hintEl = document.querySelector(".hint");
-const VIEWS = ["dash", "floor", "office", "list"];
+const VIEWS = ["dash", "tasks", "floor", "office", "list"];
 
 let currentView = "dash";
 let lastDash = 0;
@@ -1452,6 +1553,7 @@ function setView(v, persist = true) {
   currentView = v;
 
   dashEl.hidden = v !== "dash";
+  tasksEl.hidden = v !== "tasks";
   floorEl.hidden = v !== "floor";
   officeEl.hidden = v !== "office";
   officeHint.hidden = v !== "office";
@@ -1466,10 +1568,18 @@ function setView(v, persist = true) {
   });
 
   if (v === "dash") renderDash();
+  if (v === "tasks") renderTasks();
   if (v === "list") renderCards();
   if (v === "floor") requestAnimationFrame(resize);
-  if (v === "office") ensureOffice(); else disposeOffice();
+  if (v === "office") { ensureOffice(); if (office) office.setActive(true); }
+  else if (office) office.setActive(false);
   if (persist) localStorage.setItem("zk_view", v);
+}
+
+function setTheme(t, persist = true) {
+  document.documentElement.dataset.theme = t;
+  if (persist) localStorage.setItem("zk_theme", t);
+  if (office) office.setTheme();
 }
 
 async function ensureOffice() {
@@ -1649,7 +1759,7 @@ function applyCast(rebuild = true) {
   if (!rebuild) return;
   saveCast();
   renderMascotPanel();
-  if (currentView === "office") { disposeOffice(); ensureOffice(); }
+  if (office) { disposeOffice(); if (currentView === "office") ensureOffice(); }
   if (currentView === "list") renderCards();
 }
 
@@ -1811,6 +1921,10 @@ async function loadSettings() {
     document.getElementById("sBase").value = d.base_url || "";
     document.getElementById("sStatus").textContent =
       (d.provider || "—") + " · " + (d.model || "—") + (d.has_key ? " · anahtar " + d.key_hint : " · anahtar yok");
+    const tiers = d.tiers || {};
+    document.getElementById("sT1").value = tiers.T1 || "";
+    document.getElementById("sT2").value = tiers.T2 || "";
+    document.getElementById("sT3").value = tiers.T3 || "";
     document.getElementById("chatState").textContent =
       (d.provider === "mock" ? "mock" : d.provider) + " · " + (d.model || "—") + (d.has_key ? " · " + d.key_hint : "");
   } catch (e) {
@@ -1826,6 +1940,11 @@ async function saveSettings() {
   };
   const key = (document.getElementById("sKey").value || "").trim();
   if (key) body.api_key = key;
+  body.tiers = {
+    T1: (document.getElementById("sT1").value || "").trim(),
+    T2: (document.getElementById("sT2").value || "").trim(),
+    T3: (document.getElementById("sT3").value || "").trim(),
+  };
   try {
     const r = await fetch("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -1852,23 +1971,27 @@ function appendMsg(kind, text) {
 
 let chatBusy = false;
 
-const ROUTES = [
-  { id: "planner",    re: /(plan|adım|yol harita|takvim|sırala|organize)/i },
-  { id: "researcher", re: /(araştır|kaynak|web|internet|incele|topla|\bbul\b|\bbulmak\b)/i },
-  { id: "analyst",    re: /(analiz|karşılaştır|veri|metrik|rapor|özet|sayı)/i },
-  { id: "builder",    re: /(kod|yaz|oluştur|düzelt|uygula|dosya|kur|ekle)/i },
-  { id: "reviewer",   re: /(test|kontrol|doğrula|gözden geçir|hata|denetle)/i },
+const TIER_STEPS = [
+  { agent: "planner",    tier: "T3", re: /(plan|adım|yol harita|takvim|sırala|organize)/i },
+  { agent: "researcher", tier: "T1", re: /(araştır|kaynak|web|internet|incele|topla|\bbul\b|\bbulmak\b)/i },
+  { agent: "analyst",    tier: "T2", re: /(analiz|karşılaştır|veri|metrik|rapor|özet|sayı)/i },
+  { agent: "builder",    tier: "T2", re: /(kod|yaz|oluştur|düzelt|uygula|dosya|kur|ekle)/i },
+  { agent: "reviewer",   tier: "T1", re: /(test|kontrol|doğrula|gözden geçir|hata|denetle)/i },
 ];
 
-function routeAgent(text) {
-  for (const r of ROUTES) if (r.re.test(text)) return r.id;
-  return "supervisor";
+function planTask(text) {
+  const steps = TIER_STEPS.filter((s) => s.re.test(text)).map((s) => ({ agent: s.agent, tier: s.tier }));
+  if (!steps.length) steps.push({ agent: "supervisor", tier: "T2" });
+  return steps.slice(0, 3);
 }
 
-function openTask(open) {
-  const m = document.getElementById("taskModal");
-  m.hidden = !open;
-  if (open) setTimeout(() => document.getElementById("taskText").focus(), 30);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function setRouteBadge(steps) {
+  const el = document.getElementById("routeBadge");
+  if (!el) return;
+  if (!steps) { el.textContent = "Denetçi hazır"; return; }
+  el.textContent = "Denetçi → " + steps.map((s) => state.agents[s.agent].name + " · " + s.tier).join(" → ");
 }
 
 async function sendPrompt(raw) {
@@ -1876,47 +1999,191 @@ async function sendPrompt(raw) {
   const text = (raw !== undefined ? String(raw) : input.value || "").trim();
   if (!text || chatBusy) return;
   chatBusy = true;
+  stopDemo();
   if (raw === undefined) input.value = "";
   appendMsg("user", text);
   chatHistory.push({ role: "user", content: text });
 
-  const target = routeAgent(text);
-  const agent = state.agents[target];
-  appendMsg("route", "Denetçi → " + agent.name);
+  const steps = planTask(text);
+  setRouteBadge(steps);
+  appendMsg("route", "Plan · " + steps.map((s) => state.agents[s.agent].name + " (" + s.tier + ")").join(" → "));
+  const task = newTask(text, steps);
+  const startedAt = performance.now();
 
   emit("task.created", "supervisor", "İstem alındı: " + text.slice(0, 56), { status: "çalışıyor" });
-  emit("agent.started", target, "Görev atandı · " + agent.role.toLowerCase(), { status: "çalışıyor" });
+  for (const s of steps) {
+    emit("agent.started", s.agent, s.tier + " · görev alındı", { status: "çalışıyor" });
+    await sleep(260);
+  }
   state.agents.supervisor.status = "boşta";
   setPipeline(0);
 
+  const last = steps[steps.length - 1];
+  const agent = state.agents[last.agent];
   const btn = document.getElementById("btnSend");
   btn.disabled = true;
   btn.textContent = "…";
   try {
     const messages = [
-      { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Kısa, Türkçe ve uygulanabilir yanıt ver." },
+      { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Model katmanı: " + last.tier + ". Plan: " + steps.map((s) => state.agents[s.agent].name).join(" → ") + ". Kısa, Türkçe ve uygulanabilir yanıt ver." },
       ...chatHistory.slice(-6),
     ];
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, tier: last.tier, agent: last.agent }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "istek başarısız");
     appendMsg("bot", d.text || "(boş yanıt)");
     chatHistory.push({ role: "assistant", content: d.text || "" });
-    emit("model.completed", target, (d.model || "model") + " · yanıt geldi", {
+    for (const s of steps) state.agents[s.agent].status = "boşta";
+    emit("model.completed", last.agent, (d.model || "model") + " · " + (d.tier || last.tier) + " · yanıt geldi", {
       cost: d.cost_usd || 0, tokens: (d.usage && d.usage.out) || 0, severity: "ok",
     });
-    emit("task.completed", target, "Yanıt teslim edildi", { severity: "ok" });
+    emit("task.completed", last.agent, "Yanıt teslim edildi", { severity: "ok" });
+    updateTask(task.id, {
+      status: "ok",
+      result: d.text || "",
+      cost: d.cost_usd || 0,
+      tokens: (d.usage && d.usage.out) || 0,
+      ms: Math.round(performance.now() - startedAt),
+    });
   } catch (e) {
     appendMsg("err", String(e.message || e));
-    emit("task.failed", target, "İstem başarısız: " + String(e.message || e), { severity: "err" });
+    emit("task.failed", last.agent, "İstem başarısız: " + String(e.message || e), { severity: "err" });
+    updateTask(task.id, { status: "err", result: String(e.message || e), ms: Math.round(performance.now() - startedAt) });
   } finally {
     chatBusy = false;
     btn.disabled = false;
     btn.textContent = "Gönder";
   }
+}
+
+/* ---------- görev geçmişi ---------- */
+let selectedTaskId = null;
+
+function loadTasks() {
+  try {
+    const d = JSON.parse(localStorage.getItem("zk_tasks") || "[]");
+    if (Array.isArray(d)) state.tasks = d.slice(0, 30);
+  } catch (e) { /* bozuk kayıt yoksayılır */ }
+}
+
+function saveTasks() {
+  try { localStorage.setItem("zk_tasks", JSON.stringify(state.tasks.slice(0, 30))); } catch (e) { /* kota */ }
+}
+
+function newTask(text, steps) {
+  const t = {
+    id: "tsk_" + Math.random().toString(36).slice(2, 6),
+    prompt: text,
+    plan: steps.map((s) => ({ agent: s.agent, tier: s.tier })),
+    status: "running",
+    result: "",
+    cost: 0,
+    tokens: 0,
+    at: new Date().toISOString(),
+    ms: 0,
+  };
+  state.tasks.unshift(t);
+  state.tasks = state.tasks.slice(0, 30);
+  state.taskId = t.id;
+  document.getElementById("taskId").textContent = t.id;
+  const title = document.getElementById("taskTitle");
+  if (title) title.textContent = text.length > 46 ? text.slice(0, 45) + "…" : text;
+  selectedTaskId = t.id;
+  saveTasks();
+  renderTasks();
+  return t;
+}
+
+function updateTask(id, patch) {
+  const t = state.tasks.find((x) => x.id === id);
+  if (!t) return;
+  Object.assign(t, patch);
+  saveTasks();
+  renderTasks();
+}
+
+function renderTasks() {
+  const list = document.getElementById("taskList");
+  if (!list) return;
+  document.getElementById("taskCount").textContent = state.tasks.length;
+  list.textContent = "";
+  if (!state.tasks.length) {
+    const e = document.createElement("div");
+    e.className = "tdetail";
+    e.textContent = "Henüz görev yok. Alttaki panelden bir istem gönder.";
+    list.appendChild(e);
+  }
+  for (const t of state.tasks) {
+    const row = document.createElement("div");
+    row.className = "trow" + (t.id === selectedTaskId ? " sel" : "");
+    const tt = document.createElement("span");
+    tt.className = "tt";
+    tt.textContent = (t.at || "").slice(11, 16);
+    const tp = document.createElement("span");
+    tp.className = "tp";
+    tp.textContent = t.prompt;
+    tp.title = t.prompt;
+    const ts = document.createElement("span");
+    ts.className = "ts";
+    const pill = document.createElement("span");
+    pill.className = "tpill " + (t.status === "ok" ? "ok" : t.status === "err" ? "err" : "run");
+    pill.textContent = t.status === "ok" ? "tamam" : t.status === "err" ? "hata" : "koşuyor";
+    ts.appendChild(pill);
+    row.append(tt, tp, ts);
+    row.addEventListener("click", () => { selectedTaskId = t.id; renderTasks(); });
+    list.appendChild(row);
+  }
+  renderTaskDetail();
+}
+
+function renderTaskDetail() {
+  const body = document.getElementById("taskDetailBody");
+  if (!body) return;
+  const t = state.tasks.find((x) => x.id === selectedTaskId);
+  const meta = document.getElementById("taskDetailMeta");
+  if (!t) { body.textContent = "Bir görev seç."; if (meta) meta.textContent = ""; return; }
+  if (meta) {
+    meta.textContent = t.id + " · " + (t.status === "ok" ? "tamam" : t.status === "err" ? "hata" : "koşuyor") +
+      (t.cost ? " · $" + t.cost.toFixed(4) : "") + (t.ms ? " · " + (t.ms / 1000).toFixed(1) + " sn" : "");
+  }
+  body.textContent = "";
+  const plan = document.createElement("div");
+  plan.className = "plan";
+  for (const s of t.plan || []) {
+    const c = document.createElement("span");
+    c.className = "chip";
+    c.textContent = (state.agents[s.agent] ? state.agents[s.agent].name : s.agent) + " · " + s.tier;
+    plan.appendChild(c);
+  }
+  const h1 = document.createElement("h4");
+  h1.textContent = "İstem";
+  const p = document.createElement("div");
+  p.textContent = t.prompt;
+  const h2 = document.createElement("h4");
+  h2.textContent = t.status === "running" ? "Durum" : "Sonuç";
+  const res = document.createElement("div");
+  res.className = "res";
+  res.textContent = t.status === "running" ? "Çalışıyor…" : (t.result || "—");
+  body.append(plan, h1, p, h2, res);
+}
+
+function stopDemo() {
+  if (!state.demo) return;
+  state.demo = false;
+  state.pendingApproval = null;
+  const box = document.getElementById("approval");
+  if (box) box.hidden = true;
+  state.pipeline = ["idle", "idle", "idle", "idle", "idle"];
+  renderPipeline();
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    a.status = "boşta";
+    a.msg = "";
+  }
+  addFeedEvent({ type: "system", agentId: "system", msg: "Demo durduruldu · kullanıcı görevi devraldı", cost: 0, tok: 0, severity: "ok" });
 }
 
 /* =====================================================================
@@ -2054,6 +2321,16 @@ document.getElementById("mascotModal").addEventListener("click", (e) => {
 });
 
 document.getElementById("btnSettings").addEventListener("click", () => openSettings(true));
+document.getElementById("btnSettingsTop").addEventListener("click", () => openSettings(true));
+document.getElementById("btnClearTasks").addEventListener("click", () => {
+  state.tasks = [];
+  selectedTaskId = null;
+  saveTasks();
+  renderTasks();
+});
+document.getElementById("btnTheme").addEventListener("click", () => {
+  setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+});
 document.getElementById("sClose").addEventListener("click", () => openSettings(false));
 document.getElementById("sSave").addEventListener("click", saveSettings);
 document.getElementById("sClear").addEventListener("click", async () => {
@@ -2072,23 +2349,6 @@ document.getElementById("prompt").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
 });
 
-document.getElementById("btnTask").addEventListener("click", () => openTask(true));
-document.getElementById("tClose").addEventListener("click", () => openTask(false));
-document.getElementById("tCancel").addEventListener("click", () => openTask(false));
-document.getElementById("tSend").addEventListener("click", () => {
-  const v = document.getElementById("taskText").value;
-  if (!v.trim()) return;
-  document.getElementById("taskText").value = "";
-  openTask(false);
-  sendPrompt(v);
-});
-document.getElementById("taskText").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.getElementById("tSend").click(); }
-});
-document.getElementById("taskModal").addEventListener("click", (e) => {
-  if (e.target.id === "taskModal") openTask(false);
-});
-
 window.addEventListener("keydown", (e) => {
   if (e.target.matches("input, textarea")) return;
   if (e.code === "Space") { e.preventDefault(); togglePause(); }
@@ -2098,10 +2358,11 @@ window.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "k") toggleFlat();
   if (e.key.toLowerCase() === "l") toggleLive();
   if (e.key.toLowerCase() === "m") openMascot(document.getElementById("mascotModal").hidden);
-  if (e.key.toLowerCase() === "g") openTask(document.getElementById("taskModal").hidden);
+  if (e.key.toLowerCase() === "g") document.getElementById("prompt").focus();
+  if (e.key.toLowerCase() === "t") setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
   if (e.key === "Escape") openMascot(false);
   if (e.key.toLowerCase() === "v") {
-    const order = ["dash", "floor", "office", "list"];
+    const order = ["dash", "tasks", "floor", "office", "list"];
     setView(order[(order.indexOf(currentView) + 1) % order.length]);
   }
 });
@@ -2169,6 +2430,7 @@ function boot() {
   startScenario();
 
   const p = new URLSearchParams(location.search);
+  loadTasks();
 
   // demo/screenshot için sahneyi ileri sar: ?warp=10
   const warp = parseFloat(p.get("warp") || "0");
@@ -2182,7 +2444,17 @@ function boot() {
   // ?view=dash|floor|office|list ; yoksa son tercih, varsayılan Panel
   const map = { flat: "list", dash: "dash", floor: "floor", office: "office", list: "list" };
   const wanted = map[p.get("view")] || localStorage.getItem("zk_view") || "dash";
+  const savedTheme = localStorage.getItem("zk_theme") ||
+    (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  const themeParam = p.get("theme");
+  setTheme(themeParam === "light" || themeParam === "dark" ? themeParam : savedTheme, false);
   setView(wanted, false);
+
+  // ilk açılıştan sonra 3D modülünü arka planda ısıt (geçiş gecikmesini azaltır)
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
+  idle(() => {
+    if (!(navigator.connection && navigator.connection.saveData)) import("./office3d.js").catch(() => {});
+  });
 
   if (p.get("panel") === "1") setTimeout(() => openMascot(true), 250);
   if (p.get("settings") === "1") setTimeout(() => openSettings(true), 250);

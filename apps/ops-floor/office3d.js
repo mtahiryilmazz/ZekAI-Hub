@@ -32,16 +32,16 @@ function box(w, h, d, color, opts) {
 }
 
 /* ---------- zemin dokusu ---------- */
-function floorTexture() {
+function floorTexture(isLight) {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const g = c.getContext("2d");
-  g.fillStyle = "#101823";
+  g.fillStyle = isLight ? "#e8eef7" : "#101823";
   g.fillRect(0, 0, 128, 128);
-  g.strokeStyle = "rgba(130,165,205,0.10)";
+  g.strokeStyle = isLight ? "rgba(16,24,40,0.10)" : "rgba(130,165,205,0.10)";
   g.lineWidth = 2;
   g.strokeRect(0, 0, 128, 128);
-  g.fillStyle = "rgba(255,255,255,0.018)";
+  g.fillStyle = isLight ? "rgba(16,24,40,0.025)" : "rgba(255,255,255,0.018)";
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -562,6 +562,8 @@ export function createOffice3D(container, state) {
 
   scene.add(new THREE.HemisphereLight(0x9db7e0, 0x0a0f18, 1.05));
 
+  const hemi = scene.children[scene.children.length - 1];
+
   const key = new THREE.DirectionalLight(0xffe0b0, 1.55);
   key.position.set(9, 17, 11);
   key.castShadow = true;
@@ -586,10 +588,8 @@ export function createOffice3D(container, state) {
   fill.position.set(-9, 6, -7);
   scene.add(fill);
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(W, H),
-    new THREE.MeshStandardMaterial({ map: floorTexture(), color: 0xffffff, roughness: 0.95, metalness: 0 })
-  );
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture(false), color: 0xffffff, roughness: 0.95, metalness: 0 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, H), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
@@ -623,6 +623,7 @@ export function createOffice3D(container, state) {
   const w2 = box(0.22, 2.4, H, C.wall);
   w2.position.set(toX(0) - 0.11, 1.2, 0);
   scene.add(w2);
+  const wallMats = [w1.material, w2.material];
 
   for (const a of Object.values(state.agents)) {
     const desk = makeDesk(a.desk[0], a.desk[1], a.color);
@@ -644,6 +645,27 @@ export function createOffice3D(container, state) {
     scene.add(g);
     avatars[a.id] = g;
   }
+
+  /* ---------- tema / görünürlük ---------- */
+  function applyTheme() {
+    const light = document.documentElement.dataset.theme === "light";
+    const bg = new THREE.Color(light ? 0xdfe8f2 : 0x070a10);
+    scene.background = bg;
+    scene.fog.color = bg;
+    renderer.toneMappingExposure = light ? 1.0 : 1.15;
+    hemi.intensity = light ? 1.15 : 1.05;
+    key.intensity = light ? 1.6 : 1.55;
+    fill.intensity = light ? 0.55 : 0.35;
+    warm.intensity = light ? 8 : 26;
+    cool.intensity = light ? 6 : 18;
+    for (const m of wallMats) m.color.set(light ? 0xdde5ef : C.wall);
+    if (floorMat.map) floorMat.map.dispose();
+    floorMat.map = floorTexture(light);
+    floorMat.needsUpdate = true;
+  }
+  applyTheme();
+
+  let active = true;
 
   /* ---------- kamera ---------- */
   let theta = 0.66, phi = 0.95, radius = 18.5;
@@ -687,6 +709,7 @@ export function createOffice3D(container, state) {
 
   function tick() {
     raf = requestAnimationFrame(tick);
+    if (!active) return;
     const dt = Math.min(0.05, clock.getDelta());
     const now = performance.now();
 
@@ -753,6 +776,8 @@ export function createOffice3D(container, state) {
   tick();
 
   return {
+    setActive(v) { active = Boolean(v); if (active) { clock.getDelta(); resize(); } },
+    setTheme: applyTheme,
     dispose() {
       cancelAnimationFrame(raf);
       ro.disconnect();

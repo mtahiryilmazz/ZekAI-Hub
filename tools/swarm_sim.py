@@ -18,6 +18,7 @@ Yalnızca standart kütüphane kullanır.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import mimetypes
 import os
@@ -237,6 +238,21 @@ class Hub:
 
 HUB = Hub()
 
+# statik dosya önbelleği: (yol, mtime) -> (gövde, gzip gövde)
+_FILE_CACHE: dict[tuple[str, float], tuple[bytes, bytes]] = {}
+
+def cached_file(path: Path) -> tuple[bytes, bytes]:
+    key = (str(path), path.stat().st_mtime)
+    hit = _FILE_CACHE.get(key)
+    if hit:
+        return hit
+    raw = path.read_bytes()
+    gz = gzip.compress(raw, 6)
+    _FILE_CACHE.clear()
+    _FILE_CACHE[key] = (raw, gz)
+    return raw, gz
+
+
 # --------------------------------------------------------------------------
 # Sağlayıcı geçidi (BYOK) — anahtar yalnızca yerel dosyada, tarayıcıya dönmez
 # --------------------------------------------------------------------------
@@ -278,6 +294,7 @@ def public_cfg() -> dict:
         "base_url": cfg.get("base_url", ""),
         "has_key": bool(key),
         "key_hint": ("••••" + key[-4:]) if key else "",
+        "tiers": cfg.get("tiers", {}),
     }
 
 
@@ -286,10 +303,11 @@ def cost_of(model: str, tin: int, tout: int) -> float:
     return round((tin / 1_000_000) * pin + (tout / 1_000_000) * pout, 6)
 
 
-def call_model(messages: list[dict]) -> dict:
+def call_model(messages: list[dict], tier: str = "") -> dict:
     cfg = load_cfg()
     provider = cfg.get("provider", "mock")
-    model = cfg.get("model") or "mock-1"
+    tiers = cfg.get("tiers") or {}
+    model = (tiers.get(tier) if tier else "") or cfg.get("model") or "mock-1"
 
     if provider == "mock":
         prompt = messages[-1]["content"] if messages else ""
@@ -299,7 +317,7 @@ def call_model(messages: list[dict]) -> dict:
             f"“{prompt[:160]}”\n\n"
             "Gerçek model için Ayarlar'dan sağlayıcı, model ve API anahtarı girin."
         )
-        return {"text": text, "model": model, "provider": provider,
+        return {"text": text, "model": model, "provider": provider, "tier": tier,
                 "usage": {"in": max(1, len(prompt) // 4), "out": max(1, len(text) // 4)},
                 "cost_usd": 0.0}
 
@@ -354,7 +372,7 @@ def call_model(messages: list[dict]) -> dict:
         usage = data.get("usage", {})
         tin, tout = usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
 
-    return {"text": text, "model": model, "provider": provider,
+    return {"text": text, "model": model, "provider": provider, "tier": tier,
             "usage": {"in": tin, "out": tout}, "cost_usd": cost_of(model, tin, tout)}
 
 
@@ -482,6 +500,9 @@ class Handler(BaseHTTPRequestHandler):
                         cfg["api_key"] = key
                     elif data.get("clear_key"):
                         cfg.pop("api_key", None)
+                if isinstance(data.get("tiers"), dict):
+                    clean = {k: str(v).strip() for k, v in data["tiers"].items() if k in ("T1", "T2", "T3") and str(v).strip()}
+                    cfg["tiers"] = clean
                 save_cfg(cfg)
                 self._json(public_cfg())
             except Exception as exc:
@@ -501,7 +522,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 HUB.publish(Ev("task.created", "supervisor", f"İstem: {prompt[:70]}").envelope())
                 HUB.publish(Ev("agent.started", "supervisor", "Model çağrısı hazırlanıyor").envelope())
-                result = call_model(msgs)
+                result = call_model(msgs, str(data.get("tier") or ""))
                 HUB.publish(Ev(
                     "model.completed", "supervisor",
                     f"{result['model']} · {result['usage']['in']}→{result['usage']['out']} token",
@@ -529,14 +550,22 @@ class Handler(BaseHTTPRequestHandler):
             base = STATIC_DIR.resolve()
             if os.path.commonpath([str(base), str(p)]) != str(base) or not p.is_file():
                 raise FileNotFoundError
-            data = p.read_bytes()
+            raw, gz = cached_file(p)
         except (FileNotFoundError, OSError, ValueError):
             self._json({"error": "not_found"}, 404)
             return
+
+        use_gzip = p.suffix.lower() in (".js", ".css", ".svg", ".html", ".json") and "gzip" in self.headers.get("accept-encoding", "")
+        data = gz if use_gzip else raw
+        vendor = "/vendor/" in p.as_posix()
+
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable" if vendor else "no-store")
+        self.send_header("Vary", "Accept-Encoding")
+        if use_gzip:
+            self.send_header("Content-Encoding", "gzip")
         self.end_headers()
         self.wfile.write(data)
 

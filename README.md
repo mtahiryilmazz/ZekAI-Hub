@@ -11,11 +11,13 @@ arayüz kararı `docs/ADR-011-sunum-katmani.md` içinde.
 | Görünüm | Ne gösterir | Teknoloji |
 |---|---|---|
 | **Panel** (varsayılan) | KPI, akış haritası, onay kuyruğu, maliyet nabzı, ajan sağlığı | DOM/SVG |
+| **Görevler** | Verdiğin görevler: plan (ajan + model katmanı), durum, süre, maliyet, sonuç | DOM |
 | **Saha** | 2.5D izometrik ofis; ajanlar, bölgeler, olay balonları | Canvas 2D, bağımlılıksız |
 | **Ofis 3D** | Prosedürel chibi karakterler, döndürülebilir kamera, GLB model desteği | three.js (lazy, ayrı modül) |
 | **Liste** | Erişilebilir kart görünümü (ekran okuyucu/klavye) | DOM |
 
-Üstteki **Panel · Saha · Ofis 3D · Liste** düğmesiyle geçilir (`V`), tercih tarayıcıda saklanır.
+Üstteki **Panel · Görevler · Saha · Ofis 3D · Liste** düğmesiyle geçilir (`V`), tercih tarayıcıda saklanır.
+Açık/koyu tema: üstteki güneş/ay düğmesi (`T`); tema 3D sahneyi de değiştirir (gündüz/gece).
 
 ![3D ofis](docs/office3d.png)
 
@@ -36,21 +38,19 @@ GLB model bağlayabilirsiniz.
 
 ## Görev verme ve yönlendirme
 
-Mesaj alanı her görünümden erişilir: üstteki **Görev ver** düğmesi (`G`), 3D/2D sahnede
-ve panelde. Panelde ayrıca kalıcı bir **Görev konsolu** var.
+Mesaj alanı **ekranın altındaki kalıcı panel**dir; her görünümde açıktır (Enter gönder,
+Shift+Enter satır, `G` odaklan). Panelde ayrıca geçmiş konuşma ve **Görevler** sekmesi var.
 
-İş önce **Denetçi**'ye gider, sonra konuya göre uzmana dağıtılır ve bu **görünür**:
+İş önce **Denetçi**'ye gider; sonra konuya göre bir **plan** çıkar ve alt ajanlara dağıtılır:
 
 ```
-Sen → Denetçi → (plan | kaynak | analiz | kod | doğrulama) → uzman ajan
+Sen → Denetçi → Planlayıcı (T3) / Araştırmacı (T1) / Analist (T2) / Uygulayıcı (T2) / Gözden Geçiren (T1)
 ```
 
-- Konsolda `Denetçi → Analist` satırı, canlı akışta `agent.started` olayı, 3D sahnede
-o ajanın masasına yürümesi ve çalışması.
-- Yönlendirme şimdilik **kural tabanlı bir demo**dır (anahtar kelime → rol). Gerçek
-  platformda bu kararı Supervisor + Policy Engine verir; arayüz aynı olayları tüketir.
-- Yanıt geldiğinde `model.completed` ile token/maliyet işlenir, `task.completed` ile ajan
-  boşa döner.
+- Plan ve her adımın **model katmanı** alt paneldeki rozetinde ve görev detayında görünür.
+- Katman → model eşlemesi **Ayarlar → T1/T2/T3** alanlarından yapılır; boşsa tek model kullanılır.
+- İlk istemde otomatik demo senaryosu durur; başlık ve olaylar senin görevine geçer.
+- Yönlendirme şimdilik **kural tabanlı bir demo**dır; gerçek platformda Supervisor + Policy Engine verir.
 
 ## Bağlantı ayarları
 
