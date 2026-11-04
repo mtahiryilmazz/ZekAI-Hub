@@ -289,6 +289,16 @@
     border-top:1px solid var(--line);padding-top:10px}
   .setnote code{font-family:var(--mono);color:var(--muted)}
   .setnote b{color:var(--muted);font-weight:600}
+  .provgrid{display:flex;flex-wrap:wrap;gap:6px;max-height:112px;overflow:auto;padding:2px 0 6px}
+  .prov{border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px;font-size:10.5px;
+    color:var(--muted);background:rgba(255,255,255,.02)}
+  .prov:hover{color:var(--text);border-color:var(--muted)}
+  .prov.on{border-color:rgba(232,180,90,.5);color:var(--amber);background:rgba(232,180,90,.1)}
+  .swatches{display:flex;gap:5px;flex-wrap:wrap;align-items:center;grid-column:1/-1;padding:2px 0 2px}
+  .sw{width:17px;height:17px;border-radius:50%;border:1px solid rgba(255,255,255,.22);cursor:pointer}
+  .sw:hover{transform:scale(1.12)}
+  .sw.on{box-shadow:0 0 0 2px rgba(232,180,90,.65);border-color:transparent}
+  .sw.rain{background:conic-gradient(#EF4444,#F97316,#FACC15,#22C55E,#22D3EE,#3B82F6,#8B5CF6,#EC4899,#EF4444)}
   @media (max-width:820px){ .mbody{grid-template-columns:1fr} }
 
   /* ---------- tema ---------- */
@@ -689,6 +699,7 @@
             <option value="hair">Dikenli saç</option>
           </select>
           <input id="nColor" type="color" value="#E8B45A" title="Renk" />
+          <div class="swatches" id="swatches"></div>
           <select id="nModelPick" class="wide"><option value="">Model seç (models/ klasörü)…</option></select>
           <input id="nModel" class="wide" placeholder="veya model yolu: /models/karakter.glb" />
           <button class="btn primary wide" id="nAdd">Kataloğa ekle</button>
@@ -709,6 +720,7 @@
       <button class="x" id="sClose" aria-label="Kapat">✕</button>
     </header>
     <div class="setgrid">
+      <div class="wide provgrid" id="provGrid"></div>
       <label>Sağlayıcı
         <select id="sProvider">
           <option value="mock">Mock (anahtarsız test)</option>
@@ -718,10 +730,19 @@
         </select>
       </label>
       <label>Model
-        <input id="sModel" placeholder="gpt-4o-mini" />
+        <input id="sModel" list="modelList" placeholder="gpt-4o-mini" />
       </label>
+      <datalist id="modelList"></datalist>
+      <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="mini" id="sModels" type="button">Modelleri getir</button>
+        <button class="mini" id="sAddModel" type="button">+ Model ekle</button>
+        <span id="sModelOut" style="font-size:10px;color:var(--dim)"></span>
+      </div>
       <label class="wide">Base URL (opsiyonel)
-        <input id="sBase" placeholder="https://api.openai.com/v1" />
+        <span style="display:flex;gap:8px;align-items:center">
+          <input id="sBase" placeholder="https://api.openai.com/v1" style="flex:1" />
+          <button class="mini" id="sBaseReset" type="button" title="Sağlayıcı varsayılanına dön">Varsayılan</button>
+        </span>
       </label>
       <label class="wide">API anahtarı
         <input id="sKey" type="password" placeholder="sk-... (kayıtlıysa boş bırakın)" autocomplete="off" />
@@ -1924,11 +1945,44 @@ function renderMascotPanel() {
 }
 
 let editingId = null;
+const SWATCHES = ["#3B82F6", "#22D3EE", "#FACC15", "#F97316", "#EF4444", "#8B5CF6", "#EC4899", "#F8FAFC", "#0F172A", "#64748B"];
+const RAINBOW = ["#EF4444", "#F97316", "#FACC15", "#22C55E", "#22D3EE", "#3B82F6", "#8B5CF6", "#EC4899"];
+let rainbowIdx = 0;
+
+function renderSwatches() {
+  const host = document.getElementById("swatches");
+  const input = document.getElementById("nColor");
+  if (!host || !input) return;
+  host.textContent = "";
+  const current = (input.value || "").toUpperCase();
+  for (const hex of SWATCHES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sw" + (current === hex.toUpperCase() ? " on" : "");
+    b.style.background = hex;
+    b.title = hex;
+    b.addEventListener("click", () => {
+      input.value = hex;
+      renderSwatches();
+    });
+    host.appendChild(b);
+  }
+  const rb = document.createElement("button");
+  rb.type = "button";
+  rb.className = "sw rain";
+  rb.title = "Gökkuşağı · canlı renk";
+  rb.addEventListener("click", () => {
+    const hex = RAINBOW[rainbowIdx++ % RAINBOW.length];
+    input.value = hex;
+    renderSwatches();
+  });
+  host.appendChild(rb);
+}
 
 function openMascot(open) {
   const m = document.getElementById("mascotModal");
   m.hidden = !open;
-  if (open) { renderMascotPanel(); loadModels(); }
+  if (open) { renderMascotPanel(); loadModels(); renderSwatches(); }
 }
 
 async function loadModels() {
@@ -1982,13 +2036,97 @@ function openSettings(open) {
   if (open) loadSettings();
 }
 
+let providerDefs = {};
+
+function renderProviders() {
+  const grid = document.getElementById("provGrid");
+  const sel = document.getElementById("sProvider");
+  if (!grid || !sel) return;
+  grid.textContent = "";
+  sel.textContent = "";
+  const mock = document.createElement("option");
+  mock.value = "mock";
+  mock.textContent = "Mock (anahtarsız test)";
+  sel.appendChild(mock);
+  const order = ["openai", "anthropic", "google", "openrouter", "zai_coding", "zai", "kimi", "deepseek", "minimax", "dashscope", "stepfun", "tencent", "xai", "groq", "mistral", "together", "opencode", "xiaomi", "ollama", "lmstudio", "custom"];
+  for (const id of order) {
+    const p = providerDefs[id];
+    if (!p) continue;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "prov";
+    chip.dataset.id = id;
+    chip.textContent = p.label + (p.needs_base ? " *" : "");
+    chip.title = p.kind + (p.needs_base ? " · uç nokta gerekli" : (p.base ? " · " + p.base : ""));
+    chip.addEventListener("click", () => {
+      applyProvider(id);
+      document.getElementById("sKey").focus();
+    });
+    grid.appendChild(chip);
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = p.label;
+    sel.appendChild(o);
+  }
+}
+
+function applyProvider(id, keepBase = false) {
+  const p = providerDefs[id];
+  const sel = document.getElementById("sProvider");
+  if (sel) sel.value = id;
+  const base = document.getElementById("sBase");
+  if (!base) return;
+  if (!keepBase) base.value = "";
+  base.placeholder = p && p.needs_base
+    ? "uç nokta gerekli (https://.../v1)"
+    : (p && p.base ? p.base : "https://.../v1");
+  document.querySelectorAll("#provGrid .prov").forEach((c) => c.classList.toggle("on", c.dataset.id === id));
+}
+
+function customModels() {
+  try { return JSON.parse(localStorage.getItem("zk_models") || "[]"); } catch (e) { return []; }
+}
+
+function renderModelList(remote = []) {
+  const dl = document.getElementById("modelList");
+  if (!dl) return;
+  dl.textContent = "";
+  for (const m of [...new Set([...customModels(), ...remote])].slice(0, 300)) {
+    const o = document.createElement("option");
+    o.value = m;
+    dl.appendChild(o);
+  }
+}
+
+async function loadProviderModels() {
+  const out = document.getElementById("sModelOut");
+  out.textContent = "getiriliyor…";
+  out.style.color = "var(--dim)";
+  await saveSettings(true);
+  try {
+    const r = await fetch("/api/provider/models", { method: "POST" });
+    const d = await r.json();
+    if (!d.ok) { out.textContent = "✗ " + (d.error || "liste alınamadı"); out.style.color = "var(--rose)"; return; }
+    renderModelList(d.models || []);
+    out.textContent = "✓ " + (d.models || []).length + " model · " + d.provider;
+    out.style.color = "var(--teal)";
+  } catch (e) {
+    out.textContent = "✗ " + (e.message || e);
+    out.style.color = "var(--rose)";
+  }
+}
+
 async function loadSettings() {
   try {
     const r = await fetch("/api/settings");
     const d = await r.json();
+    providerDefs = d.providers || {};
+    renderProviders();
+    applyProvider(d.provider || "mock", true);
     document.getElementById("sProvider").value = d.provider || "mock";
     document.getElementById("sModel").value = d.model || "";
     document.getElementById("sBase").value = d.base_url || "";
+    renderModelList();
     document.getElementById("sStatus").textContent =
       (d.provider || "—") + " · " + (d.model || "—") + (d.has_key ? " · anahtar " + d.key_hint : " · anahtar yok");
     const tiers = d.tiers || {};
@@ -2433,6 +2571,22 @@ document.getElementById("btnTheme").addEventListener("click", () => {
 document.getElementById("sClose").addEventListener("click", () => openSettings(false));
 document.getElementById("sSave").addEventListener("click", () => saveSettings());
 document.getElementById("sTest").addEventListener("click", testSettings);
+document.getElementById("sProvider").addEventListener("change", (e) => applyProvider(e.target.value));
+document.getElementById("sBaseReset").addEventListener("click", () => {
+  document.getElementById("sBase").value = "";
+  applyProvider(document.getElementById("sProvider").value, true);
+});
+document.getElementById("sModels").addEventListener("click", loadProviderModels);
+document.getElementById("sAddModel").addEventListener("click", () => {
+  const v = (document.getElementById("sModel").value || "").trim();
+  if (!v) return;
+  const list = [...new Set([...customModels(), v])].slice(-40);
+  localStorage.setItem("zk_models", JSON.stringify(list));
+  renderModelList();
+  const out = document.getElementById("sModelOut");
+  out.textContent = "eklendi: " + v;
+  out.style.color = "var(--teal)";
+});
 document.getElementById("sClear").addEventListener("click", async () => {
   try {
     await fetch("/api/settings", {

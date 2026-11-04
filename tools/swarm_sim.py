@@ -268,6 +268,57 @@ PRICES = {
     "claude-sonnet-4-20250514": (3.00, 15.00),
 }
 
+# Sağlayıcı presetleri — hepsi tek Gateway üzerinden
+PROVIDERS = {
+    "openai":     {"label": "OpenAI",                 "kind": "openai",    "base": "https://api.openai.com/v1"},
+    "openrouter": {"label": "OpenRouter",             "kind": "openai",    "base": "https://openrouter.ai/api/v1"},
+    "anthropic":  {"label": "Anthropic (Claude)",      "kind": "anthropic", "base": "https://api.anthropic.com"},
+    "google":     {"label": "Google Gemini",           "kind": "google",    "base": "https://generativelanguage.googleapis.com/v1beta"},
+    "zai":        {"label": "Z.ai (Zhipu)",            "kind": "openai",    "base": "https://api.z.ai/api/paas/v4"},
+    "deepseek":   {"label": "DeepSeek",                "kind": "openai",    "base": "https://api.deepseek.com/v1"},
+    "groq":       {"label": "Groq",                    "kind": "openai",    "base": "https://api.groq.com/openai/v1"},
+    "xai":        {"label": "xAI (Grok)",               "kind": "openai",    "base": "https://api.x.ai/v1"},
+    "mistral":    {"label": "Mistral",                 "kind": "openai",    "base": "https://api.mistral.ai/v1"},
+    "together":   {"label": "Together AI",             "kind": "openai",    "base": "https://api.together.xyz/v1"},
+    "ollama":     {"label": "Ollama (yerel)",           "kind": "openai",    "base": "http://127.0.0.1:11434/v1", "local": True},
+    "lmstudio":   {"label": "LM Studio (yerel)",        "kind": "openai",    "base": "http://127.0.0.1:1234/v1", "local": True},
+    "zai_coding": {"label": "Z.ai Coding Plan",         "kind": "openai",    "base": "https://api.z.ai/api/coding/paas/v4"},
+    "kimi":       {"label": "Kimi (Moonshot)",          "kind": "openai",    "base": "https://api.moonshot.ai/v1"},
+    "stepfun":    {"label": "StepFun",                  "kind": "openai",    "base": "https://api.stepfun.com/v1"},
+    "minimax":    {"label": "MiniMax",                  "kind": "openai",    "base": "https://api.minimax.io/v1"},
+    "dashscope":  {"label": "Alibaba DashScope (Global)","kind": "openai",    "base": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"},
+    "tencent":    {"label": "Tencent Hunyuan",          "kind": "openai",    "base": "https://api.hunyuan.cloud.tencent.com/v1"},
+    "opencode":   {"label": "OpenCode Zen/Go",          "kind": "openai",    "base": "", "needs_base": True},
+    "xiaomi":     {"label": "Xiaomi MiMo",              "kind": "openai",    "base": "", "needs_base": True},
+    "custom":     {"label": "Özel API",                 "kind": "openai",    "base": "", "needs_base": True},
+}
+
+KEY_HINTS = [
+    ("sk-or-", "openrouter"), ("sk-ant-", "anthropic"), ("AIza", "google"),
+    ("gsk_", "groq"), ("xai-", "xai"), ("sk-proj-", "openai"), ("sk-", "openai"),
+]
+
+
+def detect_provider(key: str) -> str | None:
+    for prefix, pid in KEY_HINTS:
+        if key.startswith(prefix):
+            return pid
+    return None
+
+
+def resolve_provider(cfg: dict) -> dict:
+    pid = cfg.get("provider") or "mock"
+    if pid == "auto":
+        pid = detect_provider(cfg.get("api_key") or "") or "custom"
+    if pid == "mock":
+        return {"id": "mock", "kind": "mock", "base": "", "label": "Mock"}
+    preset = PROVIDERS.get(pid, PROVIDERS["custom"])
+    base = (cfg.get("base_url") or preset["base"]).rstrip("/")
+    if pid == "google" and base and urlparse(base).netloc.lower() in ("googleapis.com", "www.googleapis.com"):
+        base = preset["base"]
+    return {"id": pid if pid in PROVIDERS else "custom", "kind": preset["kind"], "base": base, "label": preset["label"]}
+
+
 
 def load_cfg() -> dict:
     try:
@@ -295,6 +346,10 @@ def public_cfg() -> dict:
         "has_key": bool(key),
         "key_hint": ("••••" + key[-4:]) if key else "",
         "tiers": cfg.get("tiers", {}),
+        "providers": {k: {"label": v["label"], "base": v["base"], "kind": v["kind"],
+                           "local": bool(v.get("local")), "needs_base": bool(v.get("needs_base"))}
+                      for k, v in PROVIDERS.items()},
+        "resolved": ({"provider": resolve_provider(cfg)["id"]} if cfg.get("provider") else None),
     }
 
 
@@ -325,8 +380,12 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
     if not key:
         raise ValueError("API anahtarı yok — Ayarlar'dan ekleyin")
 
-    if provider == "google":
-        base = (cfg.get("base_url") or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+    rp = resolve_provider(cfg)
+    provider = rp["id"]
+    kind = rp["kind"]
+    base = rp["base"]
+
+    if kind == "google":
         if model.startswith("models/"):
             model = model[7:]
         system = "\n".join(m["content"] for m in messages if m["role"] == "system")
@@ -343,8 +402,7 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             method="POST",
             headers={"content-type": "application/json"},
         )
-    elif provider == "anthropic":
-        base = (cfg.get("base_url") or "https://api.anthropic.com").rstrip("/")
+    elif kind == "anthropic":
         system = "\n".join(m["content"] for m in messages if m["role"] == "system")
         msgs = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
         body = {"model": model, "max_tokens": 800, "messages": msgs}
@@ -357,7 +415,6 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             headers={"content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01"},
         )
     else:  # openai ve openai-uyumlu
-        base = (cfg.get("base_url") or "https://api.openai.com/v1").rstrip("/")
         body = {"model": model, "messages": messages, "max_tokens": 800}
         req = urllib.request.Request(
             base + "/chat/completions",
@@ -388,6 +445,8 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             detail = exc.read().decode()[:300]
         except Exception:
             pass
+        if detail.lstrip().startswith("<"):
+            raise ValueError("uç nokta HTML döndürdü · base URL API adresi olmalı (ör. .../v1 veya .../v1beta)") from None
         hint = ""
         if exc.code in (401, 403):
             hint = " · anahtar reddedildi; sağlayıcı ve anahtar uyumunu kontrol edin"
@@ -397,13 +456,13 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
     except Exception as exc:
         raise ValueError(f"bağlantı hatası: {exc}") from None
 
-    if provider == "google":
+    if kind == "google":
         cands = data.get("candidates") or [{}]
         parts = (cands[0].get("content") or {}).get("parts") or []
         text = "".join(p.get("text", "") for p in parts)
         um = data.get("usageMetadata") or {}
         tin, tout = um.get("promptTokenCount", 0), um.get("candidatesTokenCount", 0)
-    elif provider == "anthropic":
+    elif kind == "anthropic":
         parts = data.get("content") or []
         text = "".join(p.get("text", "") for p in parts if p.get("type") == "text")
         usage = data.get("usage", {})
@@ -549,6 +608,32 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(public_cfg())
             except Exception as exc:
                 self._json({"error": str(exc)}, 400)
+            return
+
+        if u.path == "/api/provider/models":
+            try:
+                cfg = load_cfg()
+                rp = resolve_provider(cfg)
+                key = cfg.get("api_key") or ""
+                out = []
+                if rp["kind"] == "google":
+                    url = f"{rp['base']}/models?key={key}"
+                    with urllib.request.urlopen(url, timeout=30) as resp:
+                        data = json.loads(resp.read().decode())
+                    out = [m["name"].split("/")[-1] for m in data.get("models", [])
+                           if "generateContent" in m.get("supportedGenerationMethods", [])]
+                elif rp["kind"] == "anthropic":
+                    out = ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]
+                else:
+                    headers = {"authorization": f"Bearer {key}"} if key else {}
+                    req = urllib.request.Request(rp["base"] + "/models", headers=headers)
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        data = json.loads(resp.read().decode())
+                    items = data.get("data") or data.get("models") or []
+                    out = [(i.get("id") or i.get("name", "").split("/")[-1]) for i in items][:200]
+                self._json({"ok": True, "provider": rp["id"], "models": out})
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)})
             return
 
         if u.path == "/api/test":

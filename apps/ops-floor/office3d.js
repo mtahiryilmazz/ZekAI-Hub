@@ -60,6 +60,10 @@ function makeDesk(x, y, color) {
   top.userData.role = "top";
   g.add(top);
 
+  const lip = box(1.9, 0.025, 0.03, 0x3c4c62);
+  lip.position.set(0, 0.655, 0.47);
+  g.add(lip);
+
   for (const [lx, lz] of [[-0.85, -0.4], [0.85, -0.4], [-0.85, 0.4], [0.85, 0.4]]) {
     const leg = box(0.07, 0.6, 0.07, C.deskLeg);
     leg.position.set(lx, 0.3, lz);
@@ -93,14 +97,45 @@ function makeDesk(x, y, color) {
   cup.position.set(0.62, 0.72, -0.05);
   g.add(cup);
 
-  const chair = box(0.46, 0.07, 0.46, 0x1b2431);
-  chair.position.set(0, 0.42, 0.78);
-  chair.userData.role = "chair";
-  g.add(chair);
-  const back = box(0.46, 0.42, 0.06, 0x1b2431);
-  back.position.set(0, 0.65, 1.0);
+  // sandalye: taban + gövde + oturak + sırt
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.03, 20), standard(0x151c27));
+  base.position.set(0, 0.03, 0.78);
+  g.add(base);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 10), standard(0x2a3547));
+  stem.position.set(0, 0.22, 0.78);
+  g.add(stem);
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.24, 0.07, 20), standard(0x1b2431));
+  seat.position.set(0, 0.42, 0.78);
+  seat.userData.role = "chair";
+  g.add(seat);
+  const back = box(0.44, 0.42, 0.055, 0x1b2431);
+  back.position.set(0, 0.66, 1.0);
+  back.rotation.x = -0.12;
   back.userData.role = "chair";
   g.add(back);
+
+  // masa lambası
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.03, 16), standard(0x222c3a));
+  lampBase.position.set(-0.72, 0.675, -0.25);
+  g.add(lampBase);
+  const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 8), standard(0x2e3a4c));
+  lampArm.position.set(-0.72, 0.85, -0.25);
+  lampArm.rotation.z = 0.18;
+  g.add(lampArm);
+  const lampHead = new THREE.Mesh(
+    new THREE.ConeGeometry(0.11, 0.13, 16, 1, true),
+    standard(0x2e3a4c, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.25, side: THREE.DoubleSide })
+  );
+  lampHead.position.set(-0.68, 1.02, -0.25);
+  lampHead.rotation.z = -0.25;
+  g.add(lampHead);
+
+  // evrak
+  const paper = box(0.3, 0.012, 0.22, 0xd9d3c4);
+  paper.position.set(0.36, 0.665, 0.26);
+  paper.rotation.y = 0.18;
+  paper.userData.role = "paper";
+  g.add(paper);
 
   g.userData.screenMat = screenMat;
   return g;
@@ -467,7 +502,7 @@ function makeMascot(species, hex, accessory = "none") {
     tail.add(t);
   }
 
-  root.scale.setScalar(0.72);
+  root.scale.setScalar(0.78);
   addAccessory(parts.head, m, accessory);
   return { root, parts, mats: m };
 }
@@ -657,6 +692,66 @@ export function createOffice3D(container, state) {
   scene.add(w2);
   const wallMats = [w1.material, w2.material];
 
+  // süpürgelik + duvar üst bitişi
+  const trimMats = [];
+  const skirt1 = box(W, 0.14, 0.06, 0x1a2534);
+  skirt1.position.set(0, 0.07, toZ(0) + 0.03);
+  scene.add(skirt1);
+  const skirt2 = box(0.06, 0.14, H, 0x1a2534);
+  skirt2.position.set(toX(0) + 0.03, 0.07, 0);
+  scene.add(skirt2);
+  const cap1 = box(W, 0.07, 0.26, 0x1e2a3a);
+  cap1.position.set(0, 2.4, toZ(0) - 0.11);
+  scene.add(cap1);
+  trimMats.push(skirt1.material, skirt2.material, cap1.material);
+
+  // pencereler (gündüz/gece rengi temaya göre)
+  const windowMats = [];
+  const frameMats = [];
+  for (const wx of [-5.4, 0, 5.4]) {
+    const ww = 3.1, wh = 1.15, wy = 1.42, zf = toZ(0) + 0.015;
+    const glassMat = new THREE.MeshBasicMaterial({ color: 0x0e1a2a });
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), glassMat);
+    glass.position.set(wx, wy, zf);
+    scene.add(glass);
+    windowMats.push(glassMat);
+
+    const frameMat = standard(0x22303f, { roughness: 0.6 });
+    frameMats.push(frameMat);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.16, 0.07, 0.07), frameMat);
+    top.position.set(wx, wy + wh / 2 + 0.035, zf + 0.02);
+    scene.add(top);
+    const bot = top.clone();
+    bot.position.y = wy - wh / 2 - 0.035;
+    scene.add(bot);
+    for (const s of [-1, 1]) {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.07, wh + 0.14, 0.07), frameMat);
+      side.position.set(wx + s * (ww / 2 + 0.045), wy, zf + 0.02);
+      scene.add(side);
+    }
+    const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.05, wh, 0.05), frameMat);
+    mullion.position.set(wx, wy, zf + 0.02);
+    scene.add(mullion);
+  }
+
+  // duvar saati
+  const clockRim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 32), standard(0x2a3547));
+  clockRim.rotation.x = Math.PI / 2;
+  clockRim.position.set(7.4, 1.55, toZ(0) + 0.03);
+  scene.add(clockRim);
+  const clockFace = new THREE.Mesh(new THREE.CircleGeometry(0.26, 32), standard(0xf2efe6, { roughness: 0.9 }));
+  clockFace.position.set(7.4, 1.55, toZ(0) + 0.06);
+  scene.add(clockFace);
+  const handMat = standard(0x1b2431);
+  const hour = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.13, 0.005), handMat);
+  hour.position.set(7.34, 1.61, toZ(0) + 0.07);
+  hour.rotation.z = 0.6;
+  scene.add(hour);
+  const minute = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.19, 0.005), handMat);
+  minute.position.set(7.46, 1.58, toZ(0) + 0.07);
+  minute.rotation.z = -0.35;
+  scene.add(minute);
+
   for (const a of Object.values(state.agents)) {
     const desk = makeDesk(a.desk[0], a.desk[1], a.color);
     scene.add(desk);
@@ -703,6 +798,9 @@ export function createOffice3D(container, state) {
     warm.intensity = light ? 0 : 26;
     cool.intensity = light ? 0 : 18;
     for (const m of wallMats) m.color.set(light ? 0xdde5ef : C.wall);
+    for (const m of trimMats) m.color.set(light ? 0xc9d4e2 : 0x1a2534);
+    for (const m of frameMats) m.color.set(light ? 0xc3cfdd : 0x22303f);
+    for (const m of windowMats) m.color.set(light ? 0xdcecff : 0x0e1a2a);
     for (const m of deskMats.top) m.color.set(light ? 0xcfd9e6 : 0x2b3648);
     for (const m of deskMats.leg) m.color.set(light ? 0xb3c1d2 : 0x1a2230);
     for (const m of deskMats.chair) m.color.set(light ? 0xc3cedd : 0x1b2431);
@@ -717,7 +815,7 @@ export function createOffice3D(container, state) {
   let active = true;
 
   /* ---------- kamera ---------- */
-  let theta = 0.66, phi = 0.95, radius = 18.5;
+  let theta = 0.66, phi = 0.95, radius = 16.5;
   const target = new THREE.Vector3(0, 0.9, 0);
   const apply = () => {
     const sp = Math.sin(phi), cp = Math.cos(phi);
@@ -751,7 +849,7 @@ export function createOffice3D(container, state) {
     radius = Math.max(12, Math.min(40, radius + e.deltaY * 0.02));
     apply();
   }, { passive: false });
-  el.addEventListener("dblclick", () => { theta = 0.66; phi = 0.95; radius = 18.5; apply(); });
+  el.addEventListener("dblclick", () => { theta = 0.66; phi = 0.95; radius = 16.5; apply(); });
 
   /* ---------- döngü ---------- */
   let raf = 0;
