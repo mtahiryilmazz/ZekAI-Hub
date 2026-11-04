@@ -325,7 +325,25 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
     if not key:
         raise ValueError("API anahtarı yok — Ayarlar'dan ekleyin")
 
-    if provider == "anthropic":
+    if provider == "google":
+        base = (cfg.get("base_url") or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+        if model.startswith("models/"):
+            model = model[7:]
+        system = "\n".join(m["content"] for m in messages if m["role"] == "system")
+        contents = [
+            {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+            for m in messages if m["role"] != "system"
+        ]
+        body = {"contents": contents, "generationConfig": {"maxOutputTokens": 800}}
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        req = urllib.request.Request(
+            f"{base}/models/{model}:generateContent?key={key}",
+            data=json.dumps(body).encode(),
+            method="POST",
+            headers={"content-type": "application/json"},
+        )
+    elif provider == "anthropic":
         base = (cfg.get("base_url") or "https://api.anthropic.com").rstrip("/")
         system = "\n".join(m["content"] for m in messages if m["role"] == "system")
         msgs = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
@@ -357,11 +375,22 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             detail = exc.read().decode()[:300]
         except Exception:
             pass
-        raise ValueError(f"sağlayıcı hatası {exc.code}: {detail}") from None
+        hint = ""
+        if exc.code in (401, 403):
+            hint = " · anahtar reddedildi; sağlayıcı ve anahtar uyumunu kontrol edin"
+        elif exc.code == 404:
+            hint = " · model/uç nokta bulunamadı; base URL ve model adını kontrol edin"
+        raise ValueError(f"sağlayıcı hatası {exc.code}{hint}: {detail}") from None
     except Exception as exc:
         raise ValueError(f"bağlantı hatası: {exc}") from None
 
-    if provider == "anthropic":
+    if provider == "google":
+        cands = data.get("candidates") or [{}]
+        parts = (cands[0].get("content") or {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts)
+        um = data.get("usageMetadata") or {}
+        tin, tout = um.get("promptTokenCount", 0), um.get("candidatesTokenCount", 0)
+    elif provider == "anthropic":
         parts = data.get("content") or []
         text = "".join(p.get("text", "") for p in parts if p.get("type") == "text")
         usage = data.get("usage", {})
@@ -507,6 +536,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(public_cfg())
             except Exception as exc:
                 self._json({"error": str(exc)}, 400)
+            return
+
+        if u.path == "/api/test":
+            try:
+                res = call_model([{"role": "user", "content": "ping"}], "T1")
+                self._json({"ok": True, "provider": res["provider"], "model": res["model"],
+                            "text": (res.get("text") or "")[:160]})
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)})
             return
 
         if u.path == "/api/chat":

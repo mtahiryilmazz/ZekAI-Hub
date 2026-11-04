@@ -711,6 +711,7 @@
         <select id="sProvider">
           <option value="mock">Mock (anahtarsız test)</option>
           <option value="openai">OpenAI / uyumlu</option>
+          <option value="google">Google Gemini</option>
           <option value="anthropic">Anthropic</option>
         </select>
       </label>
@@ -730,12 +731,15 @@
       </div>
       <div class="setnote">
         Anahtar yalnızca bu bilgisayardaki <code>~/.zekai/config.json</code> dosyasında saklanır;
-        tarayıcıya geri döndürülmez ve repoya girmez. Üretimde Secret Vault / OS keychain kullanılmalıdır.
+        tarayıcıya geri döndürülmez ve repoya girmez. Google için model: <code>gemini-2.0-flash</code>;
+        OpenAI-uyumlu uçlar için base URL <code>.../v1</code>. Üretimde Secret Vault / OS keychain kullanılmalıdır.
         <br />Mevcut durum: <b id="sStatus">—</b>
       </div>
     </div>
     <footer>
       <button class="mini" id="sClear">Anahtarı sil</button>
+      <button class="mini" id="sTest">Bağlantıyı test et</button>
+      <span id="sTestOut" style="font-size:10px;color:var(--dim);align-self:center"></span>
       <button class="btn primary" id="sSave">Kaydet</button>
     </footer>
   </div>
@@ -1990,10 +1994,12 @@ async function loadSettings() {
   }
 }
 
-async function saveSettings() {
+async function saveSettings(silent = false) {
+  const provider = document.getElementById("sProvider").value;
+  const modelInput = (document.getElementById("sModel").value || "").trim();
   const body = {
-    provider: document.getElementById("sProvider").value,
-    model: (document.getElementById("sModel").value || "").trim() || "mock-1",
+    provider,
+    model: modelInput || (provider === "google" ? "gemini-2.0-flash" : "mock-1"),
     base_url: (document.getElementById("sBase").value || "").trim(),
   };
   const key = (document.getElementById("sKey").value || "").trim();
@@ -2011,10 +2017,37 @@ async function saveSettings() {
     if (!r.ok) throw new Error(d.error || "kaydedilemedi");
     document.getElementById("sKey").value = "";
     await loadSettings();
-    openSettings(false);
-    emit("system", "system", "Bağlantı ayarları güncellendi", { severity: "ok" });
+    if (!silent) {
+      openSettings(false);
+      emit("system", "system", "Bağlantı ayarları güncellendi", { severity: "ok" });
+    }
+    return true;
   } catch (e) {
     document.getElementById("sStatus").textContent = "hata: " + (e.message || e);
+    return false;
+  }
+}
+
+async function testSettings() {
+  const out = document.getElementById("sTestOut");
+  out.textContent = "kaydediliyor…";
+  out.style.color = "var(--dim)";
+  const ok = await saveSettings(true);
+  if (!ok) { out.textContent = "ayar kaydedilemedi"; out.style.color = "var(--rose)"; return; }
+  out.textContent = "test ediliyor…";
+  try {
+    const r = await fetch("/api/test", { method: "POST" });
+    const d = await r.json();
+    if (d.ok) {
+      out.textContent = "✓ " + d.provider + " · " + d.model + " · " + (d.text || "").slice(0, 48);
+      out.style.color = "var(--teal)";
+    } else {
+      out.textContent = "✗ " + (d.error || "bağlantı başarısız");
+      out.style.color = "var(--rose)";
+    }
+  } catch (e) {
+    out.textContent = "✗ " + (e.message || e);
+    out.style.color = "var(--rose)";
   }
 }
 
@@ -2390,7 +2423,8 @@ document.getElementById("btnTheme").addEventListener("click", () => {
   setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 });
 document.getElementById("sClose").addEventListener("click", () => openSettings(false));
-document.getElementById("sSave").addEventListener("click", saveSettings);
+document.getElementById("sSave").addEventListener("click", () => saveSettings());
+document.getElementById("sTest").addEventListener("click", testSettings);
 document.getElementById("sClear").addEventListener("click", async () => {
   try {
     await fetch("/api/settings", {
