@@ -255,6 +255,25 @@ function mascotMats(hex) {
   };
 }
 
+function addArms(body, m, mat) {
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.position.set(s * 0.37, 0.64, 0.06);
+    const seg = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.18, 8, 12), mat);
+    seg.position.set(0, -0.1, 0);
+    seg.castShadow = true;
+    arm.add(seg);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.082, 14, 14), m.white);
+    paw.position.set(0, -0.23, 0.02);
+    arm.add(paw);
+    arm.rotation.z = s * 0.3;
+    body.add(arm);
+    arms.push(arm);
+  }
+  return arms;
+}
+
 function makeEye(m, x, y, z) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
@@ -275,6 +294,9 @@ function makeEye(m, x, y, z) {
   const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 12), m.shine);
   c2.position.set(-0.026, -0.04, 0.09);
   g.add(c2);
+  const c3 = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 10), m.shine);
+  c3.position.set(0.036, -0.024, 0.092);
+  g.add(c3);
   return g;
 }
 
@@ -282,7 +304,7 @@ function addCheeks(head, m, dist = 0.34, y = -0.08, z = 0.48) {
   const geo = new THREE.SphereGeometry(0.095, 20, 20);
   for (const s of [-1, 1]) {
     const cheek = new THREE.Mesh(geo, m.pink);
-    cheek.scale.set(1.25, 0.72, 0.42);
+    cheek.scale.set(1.35, 0.72, 0.42);
     cheek.position.set(s * dist, y, z);
     cheek.rotation.y = s * 0.35;
     head.add(cheek);
@@ -367,7 +389,7 @@ function buildFurry(cfg, m, species, accessory) {
   parts.head = head;
 
   const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), fur);
-  h.scale.set(1.1, 1, 1.03);
+  h.scale.set(1.14, 1, 1.03);
   h.castShadow = true;
   head.add(h);
 
@@ -745,6 +767,9 @@ function makeAgent(a) {
 
   const mascot = makeMascot(a.species || "kedi", a.color, a.accessory || "none");
   g.add(mascot.root);
+  if (a.species !== "kus" && (!mascot.parts.arms || !mascot.parts.arms.length)) {
+    mascot.parts.arms = addArms(mascot.root, mascot.mats, mascot.mats.base);
+  }
   if (mascot.parts.head) {
     const mouth = new THREE.Mesh(
       new THREE.TorusGeometry(0.08, 0.012, 6, 16, Math.PI),
@@ -1116,6 +1141,11 @@ export function createOffice3D(container, state) {
         p.position.y = (p.userData.by || 0) + Math.max(0, sw) * 0.05 * amp;
       }
       mascot.root.rotation.x = a.moving ? 0.05 : 0;
+
+      for (let i = 0; i < (mascot.parts.arms || []).length; i++) {
+        const arm = mascot.parts.arms[i];
+        arm.rotation.x = a.moving ? Math.sin(phase + i * Math.PI) * 0.45 : Math.sin(now * 0.002 + a.t + i) * 0.06;
+      }
 
       // hareket yönüne dönüş
       const vx = toX(a.x) - g.position.x;
