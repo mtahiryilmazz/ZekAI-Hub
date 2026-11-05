@@ -896,8 +896,9 @@ export function createOffice3D(container, state) {
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  renderer.shadowMap.enabled = true;
+  const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
+  renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
+  renderer.shadowMap.enabled = !lowPower;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -905,9 +906,17 @@ export function createOffice3D(container, state) {
   renderer.domElement.style.width = "100%";
   renderer.domElement.style.height = "100%";
   container.appendChild(renderer.domElement);
+  renderer.domElement.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    window.dispatchEvent(new CustomEvent("zk-webgl-lost"));
+  });
 
   scene.add(new THREE.HemisphereLight(0x9db7e0, 0x0a0f18, 1.05));
-  scene.environment = createStudioEnv(renderer);
+  try {
+    scene.environment = createStudioEnv(renderer);
+  } catch (e) {
+    console.warn("stüdyo ortamı atlandı", e);
+  }
 
   const hemi = scene.children[scene.children.length - 1];
 
@@ -1056,6 +1065,7 @@ export function createOffice3D(container, state) {
   for (const a of Object.values(state.agents)) {
     const g = makeAgent(a);
     g.position.set(toX(a.x), 0, toZ(a.y));
+    g.userData.agentId = a.id;
     scene.add(g);
     avatars[a.id] = g;
     if (g.userData.contact) contacts.push(g.userData.contact);
@@ -1116,25 +1126,47 @@ export function createOffice3D(container, state) {
   apply();
 
   let drag = null;
+  let downAt = null;
+  const raycaster = new THREE.Raycaster();
+  function pickAgent(e) {
+    const rect = el.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(Object.values(avatars), true);
+    if (!hits.length) return;
+    let o = hits[0].object;
+    while (o && !o.userData.agentId) o = o.parent;
+    if (o) window.dispatchEvent(new CustomEvent("zk-agent-click", { detail: { id: o.userData.agentId } }));
+  }
   const el = renderer.domElement;
   el.style.cursor = "grab";
   el.style.touchAction = "none";
   el.addEventListener("pointerdown", (e) => {
     drag = { x: e.clientX, y: e.clientY };
+    downAt = { x: e.clientX, y: e.clientY, moved: false };
     el.setPointerCapture(e.pointerId);
     el.style.cursor = "grabbing";
   });
   el.addEventListener("pointermove", (e) => {
     if (!drag) return;
+    if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) downAt.moved = true;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag = { x: e.clientX, y: e.clientY };
     theta += dx * 0.005;
     phi = Math.max(0.3, Math.min(1.3, phi - dy * 0.004));
     apply();
   });
-  const end = () => { drag = null; el.style.cursor = "grab"; };
+  const end = (e) => {
+    if (downAt && !downAt.moved && e && e.clientX !== undefined) pickAgent(e);
+    downAt = null;
+    drag = null;
+    el.style.cursor = "grab";
+  };
   el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", end);
+  el.addEventListener("pointercancel", () => { downAt = null; drag = null; el.style.cursor = "grab"; });
   el.addEventListener("wheel", (e) => {
     e.preventDefault();
     radius = Math.max(12, Math.min(40, radius + e.deltaY * 0.02));
