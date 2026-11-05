@@ -1841,6 +1841,7 @@ async function ensureOffice() {
   if (office) { office.setActive(true); return; }
   if (!hasWebGL()) {
     officeError("Tarayıcıda WebGL kapalı veya desteklenmiyor");
+    window.__zkOfficeError = "webgl_unavailable";
     return;
   }
   officeEl.innerHTML = '<div class="office-load">3D sahne yükleniyor… <span style="color:var(--dim)">(ilk açılış birkaç saniye sürebilir)</span></div>';
@@ -1858,8 +1859,10 @@ async function ensureOffice() {
     clearTimeout(timer);
   } catch (err) {
     clearTimeout(timer);
-    officeError("3D başlatılamadı (WebGL hatası)");
+    const detail = err && err.message ? " · " + String(err.message).slice(0, 120) : "";
+    officeError("3D başlatılamadı (WebGL hatası)" + detail);
     console.warn("3D mount hatası", err);
+    window.__zkOfficeError = String((err && err.stack) || err);
   }
 }
 
