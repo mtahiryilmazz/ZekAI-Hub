@@ -244,8 +244,8 @@
   .modal-box header .x:hover{background:rgba(255,255,255,.06);color:var(--text)}
   .mbody{display:grid;grid-template-columns:1fr 248px 1.15fr;gap:14px;padding:14px;overflow:hidden;
     min-height:0;flex:1}
-  .mbody>section{display:flex;flex-direction:column;min-height:0}
-  #roleList{flex:1;min-height:0;overflow:auto;padding-right:4px}
+  .mbody>section{display:flex;flex-direction:column;min-height:0;overflow:auto;padding-right:4px}
+  #roleList{flex:none;min-height:0}
   .mbody h3{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:0 0 10px;
     display:flex;align-items:center;gap:8px;font-weight:600}
   .role{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
@@ -255,8 +255,7 @@
     border-radius:6px;padding:5px 6px;font-size:11px}
   .role .rmodel{font:9px var(--mono);color:var(--dim);border:1px solid var(--line);border-radius:4px;
     padding:1px 5px;flex:none;white-space:nowrap}
-  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;align-content:start;
-    flex:1;min-height:0;overflow:auto;padding-right:4px}
+  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;align-content:start;flex:none}
   .cc{border:1px solid var(--line);border-radius:9px;padding:7px;background:rgba(255,255,255,.02);position:relative}
   .cc .dot{width:22px;height:22px;border-radius:50%;display:block;margin-bottom:6px;
     border:1px solid rgba(255,255,255,.18);box-shadow:0 0 12px -2px currentColor}

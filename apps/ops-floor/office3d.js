@@ -133,9 +133,9 @@ function makeDesk(x, y, color, boss = false) {
   const edge = boss ? 0x241812 : 0x3c4c62;
 
   if (boss) {
-    const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 3.3), new THREE.MeshStandardMaterial({ color: 0x4a2b2b, roughness: 0.95 }));
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 3.0), new THREE.MeshStandardMaterial({ color: 0x4a2b2b, roughness: 0.95 }));
     rug.rotation.x = -Math.PI / 2;
-    rug.position.set(0, 0.006, 0.4);
+    rug.position.set(0.85, 0.014, 0.72); // bölge sınırı içinde kalır (ops odası)
     g.add(rug);
     const trim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.04, 0.02, 0.05), standard(C.amber, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.4 }));
     trim.position.set(0, topY + 0.015, D / 2 + 0.01);
@@ -1259,6 +1259,15 @@ export function createOffice3D(container, state) {
     edge.position.copy(p.position);
     scene.add(edge);
   }
+
+  // oda eşikleri: bölge sınırlarında ince zemin şeridi (yürümeyi engellemez)
+  const seamMat = new THREE.MeshStandardMaterial({ color: 0x263243, roughness: 0.9, metalness: 0.15 });
+  const seamV = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, H), seamMat);
+  seamV.position.set(toX(9.0), 0.011, 0);
+  scene.add(seamV);
+  const seamH = new THREE.Mesh(new THREE.BoxGeometry(W, 0.02, 0.14), seamMat);
+  seamH.position.set(0, 0.011, toZ(7.0));
+  scene.add(seamH);
 
   const w1 = box(W, 2.4, 0.22, C.wall);
   w1.position.set(0, 1.2, toZ(0) - 0.11);
