@@ -2640,11 +2640,16 @@ function refreshPreview() {
     const c = previewChar();
     const infoEl = document.getElementById("pvInfo");
     const hooks = {
-      onModel(state) {
+      onModel(state, meta) {
         if (!infoEl) return;
-        if (state === "start") infoEl.textContent = "model yükleniyor…";
-        else if (state === "error") infoEl.textContent = "model yüklenemedi (yol/format)";
-        else infoEl.textContent = ("GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") + " · hazır model");
+        if (state === "start") { infoEl.textContent = "model yükleniyor…"; return; }
+        if (state === "error") { infoEl.textContent = "model yüklenemedi (yol/format)"; return; }
+        const size = "GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "");
+        if (meta && meta.clips === 0) {
+          infoEl.textContent = size + (meta.fixed ? " · animasyon yok, poz düzeltildi" : " · statik model (animasyon yok)");
+        } else {
+          infoEl.textContent = size + " · hazır model";
+        }
       },
     };
     if (previewObj) { try { previewObj.setChar(c, hooks); } catch (e) { previewObj = null; } }

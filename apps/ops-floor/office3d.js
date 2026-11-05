@@ -875,7 +875,8 @@ function shadowTexture() {
 
 const FOLDER_TEX = {};
 function folderTexture(tone = "gold") {
-  if (FOLDER_TEX[tone]) return FOLDER_TEX[tone];
+  if (FOLDER_TEX[tone]) return FOLDER_TEX[tone];
+
   const colors = { gold: "#E8B45A", green: "#6FD3A0", red: "#F08A8A", orange: "#F0A04A" };
   const c = document.createElement("canvas");
   c.width = 128; c.height = 96;
@@ -897,6 +898,45 @@ function folderTexture(tone = "gold") {
 }
 
 /* ---------- ajan ---------- */
+/* T-pose düzeltmesi: klibi olmayan riglerde kolları aşağı indirir (ekseni deneyerek). */
+function relaxRestPose(obj) {
+  obj.updateMatrixWorld(true);
+  const bones = [];
+  obj.traverse((b) => {
+    if (!b.isBone) return;
+    const n = (b.name || "").toLowerCase();
+    if (!/(arm|shoulder|clavicle)/.test(n)) return;
+    if (/(fore|hand|finger|thumb|index|middle|ring|pinky)/.test(n)) return;
+    bones.push(b);
+  });
+  const tmp = new THREE.Vector3();
+  const worldY = (o) => { o.getWorldPosition(tmp); return tmp.y; };
+  const tipOf = (b) => { let tip = null; b.traverse((o) => { if (!tip && o !== b) tip = o; }); return tip || b; };
+  let fixed = 0;
+  for (const b of bones) {
+    const tip = tipOf(b);
+    if (tip === b) continue;
+    const before = worldY(tip);
+    let best = null;
+    for (const axis of ["z", "x"]) {
+      for (const s of [-1, 1]) {
+        b.rotation[axis] += s * 0.85;
+        obj.updateMatrixWorld(true);
+        const after = worldY(tip);
+        b.rotation[axis] -= s * 0.85;
+        const drop = before - after;
+        if (!best || drop > best.drop) best = { axis, s, drop };
+      }
+    }
+    if (best && best.drop > 0.01) {
+      b.rotation[best.axis] += best.s * 0.85;
+      fixed++;
+    }
+  }
+  obj.updateMatrixWorld(true);
+  return fixed;
+}
+
 function makeAgent(a) {
   const g = new THREE.Group();
   const visual = new THREE.Group(); // maskot + halka + gölge aynı pivot: hizalama bozulmaz
@@ -970,6 +1010,9 @@ function makeAgent(a) {
             idle.play();
             window.dispatchEvent(new CustomEvent("zk-model-ready", { detail: { agent: a.name, clips: clips.length } }));
           } else {
+            // klip yok: T-pose yumuşat + hafif canlılık
+            g.userData.poseFixed = relaxRestPose(obj);
+            g.userData.idleSway = true;
             window.dispatchEvent(new CustomEvent("zk-model-ready", { detail: { agent: a.name, clips: 0 } }));
           }
         })
@@ -1063,6 +1106,7 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
   let displaced = false;
   let raf = 0;
   let modelInfo = null;
+  let poseFixed = 0;
 
   function clearContent() {
     if (!content) return;
@@ -1081,6 +1125,7 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
   function setChar(c = {}) {
     clearContent();
     modelInfo = null;
+    poseFixed = 0;
     content = new THREE.Group();
     scene.add(content);
 
@@ -1109,6 +1154,8 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
           mixer = new THREE.AnimationMixer(obj);
           const clip = clips.find((x) => /idle|breath|loop|float|hover/i.test(x.name)) || clips[0];
           mixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+        } else {
+          poseFixed = relaxRestPose(obj); // T-pose'u yumuşat
         }
         const box = new THREE.Box3().setFromObject(obj);
         const h = Math.max(0.6, box.max.y);
@@ -1117,8 +1164,8 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
         camera.position.set(0, h * 0.56, Math.max(1.9, h * 2.15));
         camera.lookAt(0, h * 0.48, 0);
         camera.updateProjectionMatrix();
-        modelInfo = { size: [box.max.x - box.min.x, h, box.max.z - box.min.z].map((n) => Number(n.toFixed(2))), clips: clips.length };
-        onModel("ok");
+        modelInfo = { size: [box.max.x - box.min.x, h, box.max.z - box.min.z].map((n) => Number(n.toFixed(2))), clips: clips.length, fixed: poseFixed };
+        onModel("ok", modelInfo);
       })
       .catch(() => { onModel("error"); /* prosedürel maskot kalsın */ });
   }
@@ -1152,7 +1199,7 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
       if (nextHooks && typeof nextHooks.onModel === "function") onModel = nextHooks.onModel;
       setChar(next);
     },
-    debug() { return { loaded: !!modelInfo, info: modelInfo }; },
+    debug() { return { loaded: !!modelInfo, info: modelInfo, poseFixed }; },
     dispose() {
       displaced = true;
       cancelAnimationFrame(raf);
@@ -1614,6 +1661,10 @@ export function createOffice3D(container, state) {
           ud.current = want;
         }
         ud.mixer.update(dt);
+      } else if (g.userData.idleSway) {
+        // klibi olmayan model: nefes + hafif salınım, donuk durmasın
+        const t = performance.now() * 0.001 + a.t;
+        g.rotation.y += Math.sin(t * 0.35) * 0.0006;
       }
 
       // nefes / yürüme salınımı
@@ -1637,12 +1688,18 @@ export function createOffice3D(container, state) {
       const fs = g.userData.folderSprite;
       if (fs) {
         fs.visible = !!a.folder;
-        fs.position.y = 1.95 + Math.sin(now * 0.004 + a.t) * 0.05;
-        const tone = a.folderTone || "gold";
-        if (fs.userData.tone !== tone) {
-          fs.material.map = folderTexture(tone);
-          fs.material.needsUpdate = true;
-          fs.userData.tone = tone;
+        fs.position.y = 1.95 + Math.sin(now * 0.004 + a.t) * 0.05;
+
+        const tone = a.folderTone || "gold";
+
+        if (fs.userData.tone !== tone) {
+
+          fs.material.map = folderTexture(tone);
+
+          fs.material.needsUpdate = true;
+
+          fs.userData.tone = tone;
+
         }
       }
 
@@ -1751,6 +1808,7 @@ export function createOffice3D(container, state) {
           modelZ: g.userData.modelZ === undefined ? null : g.userData.modelZ,
           pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
           tone: g.userData.folderSprite ? (g.userData.folderSprite.userData.tone || "gold") : null,
+          poseFixed: g.userData.poseFixed || 0,
           tex: g.userData.folderSprite && g.userData.folderSprite.material.map ? g.userData.folderSprite.material.map.uuid.slice(0, 6) : null,
           time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
         })),
