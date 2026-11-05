@@ -1944,7 +1944,7 @@ const VIEWS = ["dash", "tasks", "floor", "office", "list"];
 
 let currentView = "dash";
 let lastDash = 0;
-let office = null, officeToken = 0;
+let office = null, officeToken = 0, officeBust = 0, officeAutoRetry = 0;
 
 function setView(v, persist = true) {
   if (!VIEWS.includes(v)) v = "dash";
@@ -2014,18 +2014,29 @@ async function ensureOffice() {
     }
   }, 9000);
   try {
-    const mod = await import("./office3d.js");
+    const mod = await import("./office3d.js" + (officeBust ? "?r=" + officeBust : ""));
     if (gen !== officeToken || currentView !== "office") { clearTimeout(timer); return; }
     officeEl.innerHTML = "";
     office = mod.createOffice3D(officeEl, state);
     office.setActive(true);
+    officeAutoRetry = 0;
     clearTimeout(timer);
+    // sahne henüz ölçü almamış olabilir: bir sonraki karede tekrar ölçekle
+    requestAnimationFrame(() => { if (office && currentView === "office") office.setActive(true); });
   } catch (err) {
     clearTimeout(timer);
     const detail = err && err.message ? " · " + String(err.message).slice(0, 120) : "";
-    officeError("3D başlatılamadı (WebGL hatası)" + detail);
     console.warn("3D mount hatası", err);
     window.__zkOfficeError = String((err && err.stack) || err);
+    officeAutoRetry++;
+    if (officeAutoRetry <= 2) {
+      // modül önbelleğini atlayarak sessizce tekrar dene (bayat/bozuk modül kurtarma)
+      officeBust++;
+      officeError("3D başlatılamadı, yeniden deneniyor… (" + officeAutoRetry + "/2)" + detail);
+      setTimeout(() => { if (currentView === "office" && !office) ensureOffice(); }, 350 * officeAutoRetry);
+    } else {
+      officeError("3D başlatılamadı (WebGL hatası)" + detail);
+    }
   }
 }
 
@@ -2034,6 +2045,23 @@ function disposeOffice() {
   if (office) { office.dispose(); office = null; }
   officeEl.innerHTML = "";
 }
+
+/* 3D hata kutusundaki düğmeler: yeniden dene (modül önbelleğini atlar), Saha'ya geç. */
+officeEl.addEventListener("click", (e) => {
+  if (e.target.closest("[data-retry]")) {
+    officeBust++;
+    disposeOffice();
+    if (currentView !== "office") setView("office");
+    else ensureOffice();
+    return;
+  }
+  if (e.target.closest("[data-floor]")) setView("floor");
+});
+
+window.addEventListener("error", (e) => {
+  if (currentView !== "office" || office) return;
+  officeError("3D hatası: " + String((e && e.message) || "bilinmeyen").slice(0, 90));
+});
 
 /* ---------- panel ---------- */
 function renderDash() {
@@ -2468,13 +2496,14 @@ function refreshPreview() {
     if (!modal || !host || modal.hidden) return;
     const seq = ++previewSeq;
     let mod = null;
-    try { mod = await import("./office3d.js"); } catch (e) { return; }
+    try { mod = await import("./office3d.js?pv=1"); } catch (e) { return; }
     if (seq !== previewSeq || modal.hidden) return;
 
-    if (previewObj) { try { previewObj.dispose(); } catch (e) { /* yoksay */ } previewObj = null; }
-    host.textContent = "";
     const c = previewChar();
-    try { previewObj = mod.createMascotPreview(host, c); } catch (e) { host.textContent = "önizleme açılamadı"; return; }
+    if (previewObj) { try { previewObj.setChar(c); } catch (e) { previewObj = null; } }
+    if (!previewObj) {
+      try { previewObj = mod.createMascotPreview(host, c); } catch (e) { host.textContent = "önizleme açılamadı"; return; }
+    }
 
     const nm = document.getElementById("pvName");
     const info = document.getElementById("pvInfo");
