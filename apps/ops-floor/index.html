@@ -1086,7 +1086,38 @@ function startHandoff(fromId, toId) {
   from.handoff = { x: spot[0], y: spot[1], hold: 0.9 };
 }
 
+/* Ajanlar birbirinin içine girmesin: yumuşak itme + sert mesafe kontrolü. */
+function occupied(x, y, self, radius = 0.5) {
+  for (const id in state.agents) {
+    if (id === self) continue;
+    const o = state.agents[id];
+    if (Math.hypot(x - o.x, y - o.y) < radius) return true;
+  }
+  return false;
+}
+
+function separation(a, dt) {
+  let sx = 0, sy = 0;
+  for (const id in state.agents) {
+    if (id === a.id) continue;
+    const o = state.agents[id];
+    const dx = a.x - o.x, dy = a.y - o.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 0.001 && d < 0.62) {
+      const push = (0.62 - d) / 0.62;
+      sx += (dx / d) * push;
+      sy += (dy / d) * push;
+    }
+  }
+  if (!sx && !sy) return;
+  const px = a.x + sx * dt * 1.8;
+  const py = a.y + sy * dt * 1.8;
+  if (walkable(px, a.y, a.id)) a.x = px;
+  if (walkable(a.x, py, a.id)) a.y = py;
+}
+
 function stepAgent(a, dt) {
+  separation(a, dt);
   // dosya teslimi: alıcının yanına yürü, kısa süre bekle, sonra işine dön
   if (a.handoff) {
     const hd = a.handoff;
@@ -1100,8 +1131,8 @@ function stepAgent(a, dt) {
     const step = Math.min(dist, 3.1 * dt);
     const nx = a.x + ((hd.x - a.x) / dist) * step;
     const ny = a.y + ((hd.y - a.y) / dist) * step;
-    if (walkable(nx, a.y, a.id)) a.x = nx;
-    if (walkable(a.x, ny, a.id)) a.y = ny;
+    if (walkable(nx, a.y, a.id) && !occupied(nx, a.y, a.id, 0.45)) a.x = nx;
+    if (walkable(a.x, ny, a.id) && !occupied(a.x, ny, a.id, 0.45)) a.y = ny;
     a.moving = true;
     return;
   }
@@ -1126,8 +1157,8 @@ function stepAgent(a, dt) {
   const nx = a.x + (dx / dist) * step;
   const ny = a.y + (dy / dist) * step;
   let moved = false;
-  if (Math.abs(nx - a.x) > step * 0.3 && walkable(nx, a.y, a.id)) { a.x = nx; moved = true; }
-  if (Math.abs(ny - a.y) > step * 0.3 && walkable(a.x, ny, a.id)) { a.y = ny; moved = true; }
+  if (Math.abs(nx - a.x) > step * 0.3 && walkable(nx, a.y, a.id) && !occupied(nx, a.y, a.id)) { a.x = nx; moved = true; }
+  if (Math.abs(ny - a.y) > step * 0.3 && walkable(a.x, ny, a.id) && !occupied(a.x, ny, a.id)) { a.y = ny; moved = true; }
   if (!moved) {
     // yol yoksa/bozulduysa: mobilyanın içine girmeden yanlardan dolan
     if (!a.side) a.side = a.id.length % 2 ? 1 : -1;

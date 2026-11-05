@@ -49,9 +49,9 @@ function fitModel(obj, height = 1.15, footprint = 0.84) {
   obj.position.x -= center.x;
   obj.position.z -= center.z;
   obj.position.y -= box.min.y;
-  obj.position.z += Math.max(0.26, footprint * 0.58); // masa kenarından uzaklaş (büyük modelde daha çok)
+  const offset = Math.max(0.26, footprint * 0.58); // masa kenarından uzaklaşma; görsel pivot uygular
   obj.updateMatrixWorld(true);
-  return { size: size.toArray().map((n) => Number(n.toFixed(2))), scale: Number(scale.toFixed(3)) };
+  return { size: size.toArray().map((n) => Number(n.toFixed(2))), scale: Number(scale.toFixed(3)), offset: Number(offset.toFixed(2)) };
 }
 
 const W = 18, H = 14;
@@ -835,9 +835,11 @@ function folderTexture() {
 /* ---------- ajan ---------- */
 function makeAgent(a) {
   const g = new THREE.Group();
+  const visual = new THREE.Group(); // maskot + halka + gölge aynı pivot: hizalama bozulmaz
+  g.add(visual);
 
   const mascot = makeMascot(a.species || "kedi", a.color, a.accessory || "none");
-  g.add(mascot.root);
+  visual.add(mascot.root);
   if (a.species !== "kus" && (!mascot.parts.arms || !mascot.parts.arms.length)) {
     mascot.parts.arms = addArms(mascot.root, mascot.mats, mascot.mats.base);
   }
@@ -874,10 +876,13 @@ function makeAgent(a) {
           normalizeHeight(obj, 1.4);
           const ms = Math.max(0.4, Math.min(2.8, Number(a.modelScale) || 1));
           const fit = fitModel(obj, 1.15 * ms, 0.84 * ms);
+          visual.position.z = fit.offset;
           g.userData.modelSize = fit.size;
+          g.userData.visualZ = fit.offset;
           g.userData.modelScale = ms;
           mascot.root.visible = false;
-          g.add(obj);
+          visual.add(obj);
+          g.userData.modelZ = Number(obj.position.z.toFixed(2));
           g.userData.modelFailed = false;
 
           const clips = gltf.animations || [];
@@ -917,14 +922,14 @@ function makeAgent(a) {
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.37, 40), ringMat);
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.02;
-  g.add(ring);
+  visual.add(ring);
 
   const halo = new THREE.Mesh(
     new THREE.CylinderGeometry(0.26, 0.42, 1.25, 18, 1, true),
     new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
   );
   halo.position.y = 0.7;
-  g.add(halo);
+  visual.add(halo);
 
   const contact = new THREE.Mesh(
     new THREE.PlaneGeometry(1.15, 1.15),
@@ -932,7 +937,7 @@ function makeAgent(a) {
   );
   contact.rotation.x = -Math.PI / 2;
   contact.position.y = 0.013;
-  g.add(contact);
+  visual.add(contact);
 
   const cv = document.createElement("canvas");
   cv.width = 512; cv.height = 128;
@@ -947,13 +952,13 @@ function makeAgent(a) {
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.9 }));
   sprite.position.y = 1.3;
   sprite.scale.set(1.5, 0.37, 1);
-  g.add(sprite);
+  visual.add(sprite);
 
   const folderSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: folderTexture(), transparent: true, depthWrite: false }));
   folderSprite.position.y = 1.95;
   folderSprite.scale.set(0.52, 0.39, 1);
   folderSprite.visible = false;
-  g.add(folderSprite);
+  visual.add(folderSprite);
 
   g.userData = { mascot, ring, ringMat, halo, sprite, contact, folderSprite };
   return g;
@@ -1663,6 +1668,8 @@ export function createOffice3D(container, state) {
           glb: !!g.userData.mixer || !!g.userData.clipNames,
           clips: g.userData.clipNames || [],
           size: g.userData.modelSize || null,
+          visualZ: g.userData.visualZ || 0,
+          modelZ: g.userData.modelZ === undefined ? null : g.userData.modelZ,
           pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
           time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
         })),
