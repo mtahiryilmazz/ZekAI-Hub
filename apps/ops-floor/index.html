@@ -970,10 +970,94 @@ function walkable(x, y, self) {
   return true;
 }
 
+/* Izgara üzerinde A*: mobilyanın içinden değil, etrafından dolaşır. */
+const NAV = 0.3;
+const NEI = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function findPath(sx, sy, tx, ty, self) {
+  const nx = Math.round(18 / NAV), ny = Math.round(14 / NAV);
+  const ix = (v) => Math.max(0, Math.min(nx, Math.round(v / NAV)));
+  const iy = (v) => Math.max(0, Math.min(ny, Math.round(v / NAV)));
+  const goal = [ix(tx), iy(ty)];
+  const start = [ix(sx), iy(sy)];
+  const key = (x, y) => y * (nx + 1) + x;
+  if (!walkable(goal[0] * NAV, goal[1] * NAV, self)) {
+    const gx = goal[0] * NAV, gy = goal[1] * NAV;
+    if (!walkable(gx, gy, self)) return null;
+  }
+  const gScore = new Map([[key(start[0], start[1]), 0]]);
+  const fScore = new Map([[key(start[0], start[1]), Math.hypot(goal[0] - start[0], goal[1] - start[1])]]);
+  const came = new Map();
+  const open = [start];
+  const closed = new Set();
+  let guard = 0;
+  while (open.length && guard++ < 8000) {
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) {
+      if ((fScore.get(key(open[i][0], open[i][1])) ?? Infinity) <
+          (fScore.get(key(open[bi][0], open[bi][1])) ?? Infinity)) bi = i;
+    }
+    const cur = open.splice(bi, 1)[0];
+    const ck = key(cur[0], cur[1]);
+    if (cur[0] === goal[0] && cur[1] === goal[1]) {
+      const path = [];
+      let c = cur;
+      while (c) { path.push([c[0] * NAV, c[1] * NAV]); c = came.get(key(c[0], c[1])); }
+      return path.reverse().slice(1);
+    }
+    if (closed.has(ck)) continue;
+    closed.add(ck);
+    for (const [dx, dy] of NEI) {
+      const x = cur[0] + dx, y = cur[1] + dy;
+      if (x < 0 || y < 0 || x > nx || y > ny) continue;
+      const k = key(x, y);
+      if (closed.has(k)) continue;
+      if (!walkable(x * NAV, y * NAV, self)) continue;
+      if (dx && dy) {
+        // köşe kesme yok: yan hücreler de açık olmalı
+        if (!walkable((cur[0] + dx) * NAV, cur[1] * NAV, self)) continue;
+        if (!walkable(cur[0] * NAV, (cur[1] + dy) * NAV, self)) continue;
+      }
+      const tentative = (gScore.get(ck) ?? Infinity) + (dx && dy ? 1.415 : 1);
+      if (tentative < (gScore.get(k) ?? Infinity)) {
+        came.set(k, cur);
+        gScore.set(k, tentative);
+        fScore.set(k, tentative + Math.hypot(goal[0] - x, goal[1] - y));
+        if (!open.some((n) => n[0] === x && n[1] === y)) open.push([x, y]);
+      }
+    }
+  }
+  return null;
+}
+
+/* Hedef mobilyanın içindeyse en yakın yürünebilir noktaya çek. */
+function nearestWalkable(x, y, self) {
+  if (walkable(x, y, self)) return [x, y];
+  for (let r = NAV; r <= 3.9; r += NAV) {
+    for (let ang = 0; ang < Math.PI * 2; ang += Math.PI / 8) {
+      const px = x + Math.cos(ang) * r, py = y + Math.sin(ang) * r;
+      if (walkable(px, py, self)) return [px, py];
+    }
+  }
+  return null;
+}
+
 function stepAgent(a, dt) {
-  const dx = a.tx - a.x, dy = a.ty - a.y;
+  const goal = nearestWalkable(a.tx, a.ty, a.id) || [a.tx, a.ty];
+  const goalKey = goal[0].toFixed(1) + ',' + goal[1].toFixed(1);
+  if (a.pathFor !== goalKey) {
+    a.path = findPath(a.x, a.y, goal[0], goal[1], a.id) || [];
+    a.pathFor = goalKey;
+  }
+  const wp = a.path && a.path[0];
+  const gx = wp ? wp[0] : goal[0];
+  const gy = wp ? wp[1] : goal[1];
+  const dx = gx - a.x, dy = gy - a.y;
   const dist = Math.hypot(dx, dy);
-  if (dist <= 0.02) { a.moving = false; return; }
+  if (dist <= 0.02) {
+    if (wp) { a.path.shift(); a.moving = true; return; }
+    a.moving = false;
+    return;
+  }
   const step = Math.min(dist, 3.1 * dt);
   const nx = a.x + (dx / dist) * step;
   const ny = a.y + (dy / dist) * step;
@@ -981,8 +1065,7 @@ function stepAgent(a, dt) {
   if (Math.abs(nx - a.x) > step * 0.3 && walkable(nx, a.y, a.id)) { a.x = nx; moved = true; }
   if (Math.abs(ny - a.y) > step * 0.3 && walkable(a.x, ny, a.id)) { a.y = ny; moved = true; }
   if (!moved) {
-    // önü kapalı: mobilyanın içine girmeden yanlardan dolan
-    const t = performance.now();
+    // yol yoksa/bozulduysa: mobilyanın içine girmeden yanlardan dolan
     if (!a.side) a.side = a.id.length % 2 ? 1 : -1;
     let sx = a.x + a.side * step;
     if (!walkable(sx, a.y, a.id)) {
@@ -990,7 +1073,9 @@ function stepAgent(a, dt) {
       sx = a.x + a.side * step;
     }
     if (walkable(sx, a.y, a.id)) a.x = sx;
-    a.sideAt = t;
+  }
+  if (a.path && a.path[0] && Math.hypot(a.x - a.path[0][0], a.y - a.path[0][1]) < NAV * 0.55) {
+    a.path.shift();
   }
   a.moving = true;
 }

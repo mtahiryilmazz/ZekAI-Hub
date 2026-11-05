@@ -10,6 +10,28 @@ Kendi modelinizi (Sketchfab, Blender, vb.) eklemek için:
    `/models/karakter.glb` (sunucu bu klasörü statik olarak servis eder).
 3. **Güncelle** → **Sahneye uygula**. Model yüklenemezse prosedürel maskot kalır.
 
+## Animasyon (rigged GLB)
+
+Model iskelet (skin) ve animasyon klipleri içeriyorsa ofiste otomatik oynar.
+
+- **Klipler:** `idle`, `walk`, `work` adlarını kullanın (Türkçe/İngilizce eşleşme: `Idle/Breath`, `Walk/Run`, `Work/Type/Sit`).
+  Bulunamazsa ilk klip sürekli oynar.
+- **Durum eşlemesi:** boştayken `idle`, yürürken `walk`, görevdeyken `work`; geçişler 0,22 sn fade ile.
+- **İkinci kopya:** Aynı model birden fazla ajana atanırsa iskelet `SkeletonUtils.clone` ile kopyalanır; animasyonlar bağımsız oynar.
+- **Ölçü:** Model 1,15 birim boya ve 0,84 birim ayak izine sığdırılır, taban zemine oturur, masa kenarından 0,26 birim uzaklaştırılır.
+
+## Format seçimi
+
+| Format | Web'de hız | Animasyon | Not |
+|---|---|---|---|
+| **GLB** | En iyi (tek dosya) | İskelet + morph | Önerilen |
+| glTF | İyi (çok dosya) | Var | .bin/dokular ayrı iner |
+| FBX | Yavaş (büyük, ayrı loader) | Var | DCC çıkışı için |
+| USDZ | Web'de oynatılmaz | three.js'te yok | Yalnız AR Quick Look |
+
+Hedef: **< 5 MB**, tek iskelet, doku 1K. 40 MB üzeri modeller ilk açılışı saniyelerce geciktirir;
+`npx @gltf-transform/cli optimize in.glb out.glb --compress draco` ile küçültün.
+
 ## Kurallar
 
 - **Lisans:** Modelin lisansı ve atıf koşulları size aittir. Repoya yalnızca kendi
