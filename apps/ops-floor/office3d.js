@@ -960,7 +960,8 @@ function makeAgent(a) {
 }
 
 /* ---------- maskot paneli önizlemesi ---------- */
-export function createMascotPreview(container, char = {}) {
+export function createMascotPreview(container, char = {}, hooks = {}) {
+  let onModel = typeof hooks.onModel === "function" ? hooks.onModel : () => {};
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 60);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -992,6 +993,7 @@ export function createMascotPreview(container, char = {}) {
   let mixer = null;
   let displaced = false;
   let raf = 0;
+  let modelInfo = null;
 
   function clearContent() {
     if (!content) return;
@@ -1009,6 +1011,7 @@ export function createMascotPreview(container, char = {}) {
 
   function setChar(c = {}) {
     clearContent();
+    modelInfo = null;
     content = new THREE.Group();
     scene.add(content);
 
@@ -1021,6 +1024,7 @@ export function createMascotPreview(container, char = {}) {
     const url = String(c.model || "").trim();
     if (!url || /sketchfab\.com/i.test(url)) return;
     const token = content;
+    onModel("start");
     loadModel(/^models\//i.test(url) ? "/" + url : url)
       .then((gltf) => {
         if (displaced || content !== token) return; // bu arada karakter değişti
@@ -1044,8 +1048,10 @@ export function createMascotPreview(container, char = {}) {
         camera.position.set(0, h * 0.56, Math.max(1.9, h * 2.15));
         camera.lookAt(0, h * 0.48, 0);
         camera.updateProjectionMatrix();
+        modelInfo = { size: [box.max.x - box.min.x, h, box.max.z - box.min.z].map((n) => Number(n.toFixed(2))), clips: clips.length };
+        onModel("ok");
       })
-      .catch(() => { /* prosedürel maskot kalsın */ });
+      .catch(() => { onModel("error"); /* prosedürel maskot kalsın */ });
   }
 
   const clock = new THREE.Clock();
@@ -1073,7 +1079,11 @@ export function createMascotPreview(container, char = {}) {
   tick();
 
   return {
-    setChar(next) { setChar(next); },
+    setChar(next, nextHooks) {
+      if (nextHooks && typeof nextHooks.onModel === "function") onModel = nextHooks.onModel;
+      setChar(next);
+    },
+    debug() { return { loaded: !!modelInfo, info: modelInfo }; },
     dispose() {
       displaced = true;
       cancelAnimationFrame(raf);

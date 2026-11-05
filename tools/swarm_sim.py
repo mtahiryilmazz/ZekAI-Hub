@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import struct
 import mimetypes
 import os
 import queue
@@ -350,6 +351,26 @@ def save_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def glb_meta(path: Path) -> dict:
+    """GLB başlığından mesh/iskelet/animasyon sayısı (hızlı, tam parse yok)."""
+    try:
+        with path.open("rb") as f:
+            head = f.read(20)
+            if len(head) < 20 or head[:4] != b"glTF":
+                return {}
+            chunk_len = struct.unpack("<I", head[12:16])[0]
+            if chunk_len <= 0 or chunk_len > 8 * 1024 * 1024:
+                return {}
+            doc = json.loads(f.read(chunk_len).decode("utf-8", "ignore"))
+            return {
+                "meshes": len(doc.get("meshes") or []),
+                "skins": len(doc.get("skins") or []),
+                "animations": len(doc.get("animations") or []),
+            }
+    except Exception:
+        return {}
+
+
 def load_skills() -> list:
     items = load_json(SKILLS_PATH, [])
     return items if isinstance(items, list) else []
@@ -568,13 +589,20 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/models":
-            files = []
+            models = []
             models_dir = STATIC_DIR / "models"
             if models_dir.is_dir():
                 for p in sorted(models_dir.rglob("*")):
                     if p.is_file() and p.suffix.lower() in (".glb", ".gltf"):
-                        files.append("/models/" + p.relative_to(models_dir).as_posix())
-            self._json({"models": files[:120]})
+                        meta = glb_meta(p) if p.suffix.lower() == ".glb" else {}
+                        models.append({
+                            "path": "/models/" + p.relative_to(models_dir).as_posix(),
+                            "name": p.name,
+                            "size": p.stat().st_size,
+                            "skins": meta.get("skins", 0),
+                            "animations": meta.get("animations", 0),
+                        })
+            self._json({"models": models[:120]})
             return
 
         if path == "/events":

@@ -2527,21 +2527,23 @@ function refreshPreview() {
     if (seq !== previewSeq || modal.hidden) return;
 
     const c = previewChar();
-    if (previewObj) { try { previewObj.setChar(c); } catch (e) { previewObj = null; } }
+    const infoEl = document.getElementById("pvInfo");
+    const hooks = {
+      onModel(state) {
+        if (!infoEl) return;
+        if (state === "start") infoEl.textContent = "model yükleniyor…";
+        else if (state === "error") infoEl.textContent = "model yüklenemedi (yol/format)";
+        else infoEl.textContent = ("GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") + " · hazır model");
+      },
+    };
+    if (previewObj) { try { previewObj.setChar(c, hooks); } catch (e) { previewObj = null; } }
     if (!previewObj) {
-      try { previewObj = mod.createMascotPreview(host, c); } catch (e) { host.textContent = "önizleme açılamadı"; return; }
+      try { previewObj = mod.createMascotPreview(host, c, hooks); } catch (e) { host.textContent = "önizleme açılamadı"; return; }
     }
 
     const nm = document.getElementById("pvName");
-    const info = document.getElementById("pvInfo");
     if (nm) nm.textContent = c.name;
-    if (info) {
-      if (c.model) {
-        info.textContent = "GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") + " · hazır model";
-      } else {
-        info.textContent = "prosedürel · " + (SPECIES_LABEL[c.species] || c.species);
-      }
-    }
+    if (infoEl && !c.model) infoEl.textContent = "prosedürel · " + (SPECIES_LABEL[c.species] || c.species);
   }, 150);
 }
 
@@ -2557,9 +2559,13 @@ async function loadModels() {
     none.textContent = "Model seç (models/ klasörü)…";
     sel.appendChild(none);
     for (const m of d.models || []) {
+      const item = typeof m === "string" ? { path: m, name: m.replace("/models/", "") } : m;
+      const mb = item.size ? (item.size / 1048576).toFixed(item.size > 10 * 1048576 ? 0 : 1) + " MB" : "";
+      const anim = item.animations ? "· animasyonlu" : (item.skins ? "· iskelet" : "· statik");
       const o = document.createElement("option");
-      o.value = m;
-      o.textContent = m.replace("/models/", "");
+      o.value = item.path;
+      o.textContent = [item.name, mb, anim].filter(Boolean).join("  ");
+      o.title = item.path;
       sel.appendChild(o);
     }
     if (!(d.models || []).length) {
@@ -3293,7 +3299,13 @@ document.getElementById("skDelete").addEventListener("click", async () => {
 document.getElementById("mClose").addEventListener("click", () => openMascot(false));
 document.getElementById("mApply").addEventListener("click", () => { applyCast(); openMascot(false); });
 document.getElementById("nModelPick").addEventListener("change", (e) => {
-  if (e.target.value) document.getElementById("nModel").value = e.target.value;
+  if (e.target.value) {
+    document.getElementById("nModel").value = e.target.value;
+    const info = document.getElementById("pvInfo");
+    if (info) info.textContent = "seçildi · yükleniyor…";
+    syncModelMode();
+    refreshPreview();
+  }
 });
 document.getElementById("nAdd").addEventListener("click", () => {
   const name = (document.getElementById("nName").value || "").trim();
