@@ -259,6 +259,8 @@ def cached_file(path: Path) -> tuple[bytes, bytes]:
 
 CONFIG_DIR = Path.home() / ".zekai"
 CONFIG_PATH = CONFIG_DIR / "config.json"
+SKILLS_PATH = CONFIG_DIR / "skills.json"
+USAGE_PATH = CONFIG_DIR / "usage.json"
 
 # USD / 1M token; bilinmeyen modelde maliyet 0 gösterilir (tahmin üretilmez)
 PRICES = {
@@ -336,6 +338,41 @@ def save_cfg(cfg: dict) -> None:
         pass
 
 
+def load_json(path: Path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+
+def save_json(path: Path, data) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_skills() -> list:
+    items = load_json(SKILLS_PATH, [])
+    return items if isinstance(items, list) else []
+
+
+def save_skills(items: list) -> None:
+    save_json(SKILLS_PATH, items[:40])
+
+
+def load_usage() -> dict:
+    d = load_json(USAGE_PATH, {})
+    today = datetime.now().strftime("%Y-%m-%d")
+    if d.get("date") != today:
+        return {"date": today, "cost": 0.0}
+    return {"date": today, "cost": float(d.get("cost", 0) or 0)}
+
+
+def add_usage(cost: float) -> None:
+    u = load_usage()
+    u["cost"] = round(u["cost"] + float(cost or 0), 6)
+    save_json(USAGE_PATH, u)
+
+
 def public_cfg() -> dict:
     cfg = load_cfg()
     key = cfg.get("api_key") or ""
@@ -346,6 +383,8 @@ def public_cfg() -> dict:
         "has_key": bool(key),
         "key_hint": ("••••" + key[-4:]) if key else "",
         "tiers": cfg.get("tiers", {}),
+        "daily_cap_usd": float(cfg.get("daily_cap_usd") or 0),
+        "today_cost": load_usage()["cost"],
         "providers": {k: {"label": v["label"], "base": v["base"], "kind": v["kind"],
                            "local": bool(v.get("local")), "needs_base": bool(v.get("needs_base"))}
                       for k, v in PROVIDERS.items()},
@@ -524,6 +563,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(public_cfg())
             return
 
+        if path == "/api/skills":
+            self._json({"skills": load_skills()})
+            return
+
         if path == "/api/models":
             files = []
             models_dir = STATIC_DIR / "models"
@@ -585,6 +628,15 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(n) if n else b"{}"
         return json.loads(raw.decode("utf-8") or "{}")
 
+    def do_DELETE(self):
+        u = urlparse(self.path)
+        if u.path == "/api/skills":
+            sid = parse_qs(u.query).get("id", [""])[0]
+            save_skills([s for s in load_skills() if s.get("id") != sid])
+            self._json({"ok": True})
+            return
+        self._json({"error": "not_found"}, 404)
+
     def do_POST(self):
         u = urlparse(self.path)
 
@@ -604,6 +656,11 @@ class Handler(BaseHTTPRequestHandler):
                 if isinstance(data.get("tiers"), dict):
                     clean = {k: str(v).strip() for k, v in data["tiers"].items() if k in ("T1", "T2", "T3") and str(v).strip()}
                     cfg["tiers"] = clean
+                if "daily_cap_usd" in data:
+                    try:
+                        cfg["daily_cap_usd"] = max(0.0, float(data.get("daily_cap_usd") or 0))
+                    except Exception:
+                        cfg["daily_cap_usd"] = 0.0
                 save_cfg(cfg)
                 self._json(public_cfg())
             except Exception as exc:
@@ -636,6 +693,34 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": False, "error": str(exc)})
             return
 
+        if u.path == "/api/skills":
+            try:
+                data = self._body()
+                name = str(data.get("name") or "").strip()[:80]
+                text = str(data.get("instructions") or "").strip()[:4000]
+                if not name:
+                    raise ValueError("yetenek adı gerekli")
+                items = load_skills()
+                sid = str(data.get("id") or "").strip()
+                if sid:
+                    for s in items:
+                        if s.get("id") == sid:
+                            s.update({"name": name, "instructions": text,
+                                      "version": int(s.get("version", 1)) + 1,
+                                      "updated": datetime.now().isoformat(timespec="seconds")})
+                            break
+                    else:
+                        sid = ""
+                if not sid:
+                    sid = "sk_" + uuid.uuid4().hex[:8]
+                    items.append({"id": sid, "name": name, "instructions": text, "version": 1,
+                                  "updated": datetime.now().isoformat(timespec="seconds")})
+                save_skills(items)
+                self._json({"ok": True, "skill": next(s for s in load_skills() if s["id"] == sid)})
+            except Exception as exc:
+                self._json({"error": str(exc)}, 400)
+            return
+
         if u.path == "/api/test":
             try:
                 res = call_model([{"role": "user", "content": "ping"}], "T1")
@@ -656,6 +741,19 @@ class Handler(BaseHTTPRequestHandler):
                     m["content"] = str(m.get("content", ""))[:4000]
                 prompt = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
 
+                cfg = load_cfg()
+                cap = float(cfg.get("daily_cap_usd") or 0)
+                usage = load_usage()
+                if cap > 0 and usage["cost"] >= cap:
+                    raise ValueError(f"günlük limit aşıldı (${usage['cost']:.4f} / ${cap:.2f}) — yarın sıfırlanır")
+
+                skill_id = str(data.get("skill_id") or "")
+                if skill_id:
+                    sk = next((s for s in load_skills() if s.get("id") == skill_id), None)
+                    if sk:
+                        msgs = [{"role": "system",
+                                 "content": f"Paylaşılan yetenek: {sk['name']} (v{sk.get('version', 1)})\n{sk.get('instructions','')[:2500]}"}] + msgs
+
                 HUB.publish(Ev("task.created", "supervisor", f"İstem: {prompt[:70]}").envelope())
                 HUB.publish(Ev("agent.started", "supervisor", "Model çağrısı hazırlanıyor").envelope())
                 result = call_model(msgs, str(data.get("tier") or ""))
@@ -665,6 +763,7 @@ class Handler(BaseHTTPRequestHandler):
                     cost_usd=result["cost_usd"], tokens=result["usage"], severity="ok",
                 ).envelope())
                 HUB.publish(Ev("task.completed", "supervisor", "Yanıt teslim edildi", severity="ok").envelope())
+                add_usage(result.get("cost_usd") or 0)
                 self._json(result)
             except Exception as exc:
                 self._json({"error": str(exc)}, 502)
