@@ -963,11 +963,11 @@ function applyCanvasTheme() {
 
 const AGENTS = [
   { id: "supervisor", name: "Denetçi",   role: "Orkestratör", zone: "ops",    color: "#E8B45A", letter: "D", desk: [10.4, 8.2], species: "kedi", boss: true },
-  { id: "planner",    name: "Planlayıcı",role: "Plan",        zone: "plan",   color: "#6FD3C0", letter: "P", desk: [1.7, 1.8], species: "kus" },
-  { id: "researcher", name: "Araştırmacı",role:"Kaynak",      zone: "plan",   color: "#6FA8FF", letter: "A", desk: [4.9, 1.8], species: "kedi" },
-  { id: "analyst",    name: "Analist",   role: "Analiz",      zone: "field",  color: "#A78BFA", letter: "N", desk: [10.6, 1.8], species: "kopek" },
-  { id: "builder",    name: "Uygulayıcı",role: "Kod",         zone: "field",  color: "#7FD48A", letter: "U", desk: [13.9, 1.8], species: "kopek" },
-  { id: "reviewer",   name: "Gözden Geçiren", role: "Doğrulama", zone: "review", color: "#F08A8A", letter: "G", desk: [2.4, 8.4], species: "kus" },
+  { id: "planner",    name: "Planlayıcı",role: "Plan · Skill", zone: "plan",   color: "#6FD3C0", letter: "P", desk: [1.7, 1.8], species: "kus" },
+  { id: "researcher", name: "Araştırmacı",role:"Kaynak · MCP", zone: "plan",   color: "#6FA8FF", letter: "A", desk: [4.9, 1.8], species: "kedi" },
+  { id: "analyst",    name: "Analist",   role: "Analiz · Veri", zone: "field",  color: "#A78BFA", letter: "N", desk: [10.6, 1.8], species: "kopek" },
+  { id: "builder",    name: "Uygulayıcı",role: "Kod · Tasarım", zone: "field",  color: "#7FD48A", letter: "U", desk: [13.9, 1.8], species: "kopek" },
+  { id: "reviewer",   name: "Gözden Geçiren", role: "Doğrulama · QA", zone: "review", color: "#F08A8A", letter: "G", desk: [2.4, 8.4], species: "kus" },
 ];
 
 const ZONES = [
@@ -3049,21 +3049,74 @@ function appendMsg(kind, text) {
 
 let chatBusy = false;
 
-const TIER_STEPS = [
-  { agent: "planner",    tier: "T3", re: /(plan|adım|yol harita|takvim|sırala|organize)/i },
-  { agent: "researcher", tier: "T1", re: /(araştır|kaynak|web|internet|incele|topla|\bbul\b|\bbulmak\b)/i },
-  { agent: "analyst",    tier: "T2", re: /(analiz|karşılaştır|veri|metrik|rapor|özet|sayı)/i },
-  { agent: "builder",    tier: "T2", re: /(kod|yaz|oluştur|düzelt|uygula|dosya|kur|ekle)/i },
-  { agent: "reviewer",   tier: "T1", re: /(test|kontrol|doğrula|gözden geçir|hata|denetle)/i },
-];
+/* Her ajanın uzmanlık etiketleri — yönlendirme bunlara göre puanlanır. */
+const AGENT_CAPS = {
+  supervisor: { tier: "T2", caps: ["route", "plan", "approve"] },
+  planner:    { tier: "T3", caps: ["plan", "skill", "workflow", "organize"] },
+  researcher: { tier: "T1", caps: ["research", "mcp", "web", "source"] },
+  analyst:    { tier: "T2", caps: ["analysis", "data", "metric", "report"] },
+  builder:    { tier: "T2", caps: ["code", "build", "design", "ui", "file"] },
+  reviewer:   { tier: "T1", caps: ["review", "qa", "test", "audit"] },
+};
+
+const CAP_RE = {
+  route: /(yönlendir|dağıt|kim yapsın|hangi ajan)/i,
+  plan: /(plan|adım|yol harita|takvim|sırala|organize|strateji|roadmap)/i,
+  skill: /(skill|yetenek|prosedür|yöntem|şablon)/i,
+  workflow: /(iş akışı|workflow|otomasyon|zincir|pipeline)/i,
+  organize: /(düzenle|organize|grupla|önceliklendir)/i,
+  research: /(araştır|kaynak|incele|topla|bul|derle|literatür)/i,
+  mcp: /(mcp|model context|connector|bağlaç|entegrasyon|api bağla|araç sunucu)/i,
+  web: /(site|url|link|sayfa|web)/i,
+  source: /(kaynakça|atıf|referans|alıntı)/i,
+  analysis: /(analiz|karşılaştır|rapor|özet|çıkarım|değerlendir)/i,
+  data: /(veri|metrik|tablo|grafik|istatistik|sayı)/i,
+  metric: /(kpi|metrik|ölçüm|benchmark)/i,
+  report: /(rapor|sunum|brief|özet)/i,
+  code: /(kod|yazılım|fonksiyon|bug|hata düzelt|refactor|script|python|javascript|typescript|api yaz)/i,
+  build: /(oluştur|uygula|dosya|kur|ekle|derle|build|deploy)/i,
+  design: /(tasarım|arayüz|ui|ux|renk|tipografi|mockup|prototip|logo|ikon)/i,
+  ui: /(buton|menü|panel|ekran|layout|responsive)/i,
+  file: /(dosya|klasör|repo|depo|kod tabanı)/i,
+  review: /(test|kontrol|doğrula|gözden geçir|denetle|qa)/i,
+  audit: /(güvenlik|audit|denetim|risk|lisans)/i,
+  qa: /(çalışmıyor|kırık|regresyon|bozuk)/i,
+  approve: /(onay|izin|bütçe)/i,
+};
 
 function planTask(text) {
-  const steps = TIER_STEPS.filter((s) => s.re.test(text)).map((s) => ({ agent: s.agent, tier: s.tier }));
-  if (!steps.length) steps.push({ agent: "supervisor", tier: "T2" });
-  return steps.slice(0, 3);
+  const t = String(text || "");
+  const scored = [];
+  for (const [id, meta] of Object.entries(AGENT_CAPS)) {
+    if (id === "supervisor") continue;
+    let score = 0;
+    const hits = [];
+    for (const cap of meta.caps) {
+      if (CAP_RE[cap] && CAP_RE[cap].test(t)) { score += 1; hits.push(cap); }
+    }
+    if (score) scored.push({ id, score, tier: meta.tier, caps: hits });
+  }
+  scored.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  const steps = scored.slice(0, 3).map((s) => ({ agent: s.id, tier: s.tier, caps: s.caps }));
+  if (!steps.length) steps.push({ agent: "planner", tier: "T3", caps: ["plan"] });
+  return steps;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Token tasarrufu: son mesajlardan karakter bütçesine sığanı al. */
+function compactHistory(maxMsgs = 6, maxChars = 2600) {
+  const out = [];
+  let budget = maxChars;
+  for (let i = chatHistory.length - 1; i >= 0 && out.length < maxMsgs; i--) {
+    const m = chatHistory[i];
+    const text = String(m.content || "");
+    if (text.length > budget) break;
+    budget -= text.length;
+    out.unshift({ role: m.role, content: text });
+  }
+  return out;
+}
 
 function setRouteBadge(steps) {
   const el = document.getElementById("routeBadge");
@@ -3083,15 +3136,21 @@ async function sendPrompt(raw) {
   chatHistory.push({ role: "user", content: text });
 
   const steps = planTask(text);
+  state.plan = steps;
   setRouteBadge(steps);
   appendMsg("route", "Plan · " + steps.map((s) => state.agents[s.agent].name + " (" + s.tier + ")").join(" → "));
   const task = newTask(text, steps);
   const startedAt = performance.now();
 
   emit("task.created", "supervisor", "İstem alındı: " + text.slice(0, 56), { status: "çalışıyor" });
-  for (const s of steps) {
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
     emit("agent.started", s.agent, s.tier + " · görev alındı", { status: "çalışıyor" });
     await sleep(260);
+    if (i < steps.length - 1) {
+      emit("agent.completed", s.agent, "İşi bitirdi · sıradaki ajana devrediyor", { severity: "ok" });
+      await sleep(420);
+    }
   }
   state.agents.supervisor.status = "boşta";
   setPipeline(0);
@@ -3104,7 +3163,7 @@ async function sendPrompt(raw) {
   try {
     const messages = [
       { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Model katmanı: " + last.tier + ". Plan: " + steps.map((s) => state.agents[s.agent].name).join(" → ") + ". Kısa, Türkçe ve uygulanabilir yanıt ver." },
-      ...chatHistory.slice(-6),
+      ...compactHistory(6, 2600),
     ];
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },

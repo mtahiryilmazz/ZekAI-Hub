@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import hashlib
 import struct
 import mimetypes
 import os
@@ -418,11 +419,22 @@ def cost_of(model: str, tin: int, tout: int) -> float:
     return round((tin / 1_000_000) * pin + (tout / 1_000_000) * pout, 6)
 
 
+# Kademeye göre çıktı sınırı: ucuz katman kısa yanıt üretir.
+MAX_OUT = {"T1": 450, "T2": 700, "T3": 950}
+RESP_CACHE: dict = {}
+
+
+def cache_key(provider: str, model: str, tier: str, messages: list, skill_id: str) -> str:
+    raw = json.dumps([provider, model, tier, messages, skill_id], ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
 def call_model(messages: list[dict], tier: str = "") -> dict:
     cfg = load_cfg()
     provider = cfg.get("provider", "mock")
     tiers = cfg.get("tiers") or {}
     model = (tiers.get(tier) if tier else "") or cfg.get("model") or "mock-1"
+    max_out = MAX_OUT.get(tier, 700)
 
     if provider == "mock":
         prompt = messages[-1]["content"] if messages else ""
@@ -453,7 +465,7 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
             for m in messages if m["role"] != "system"
         ]
-        body = {"contents": contents, "generationConfig": {"maxOutputTokens": 800}}
+        body = {"contents": contents, "generationConfig": {"maxOutputTokens": max_out}}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         req = urllib.request.Request(
@@ -465,7 +477,7 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
     elif kind == "anthropic":
         system = "\n".join(m["content"] for m in messages if m["role"] == "system")
         msgs = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
-        body = {"model": model, "max_tokens": 800, "messages": msgs}
+        body = {"model": model, "max_tokens": max_out, "messages": msgs}
         if system:
             body["system"] = system
         req = urllib.request.Request(
@@ -475,7 +487,7 @@ def call_model(messages: list[dict], tier: str = "") -> dict:
             headers={"content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01"},
         )
     else:  # openai ve openai-uyumlu
-        body = {"model": model, "messages": messages, "max_tokens": 800}
+        body = {"model": model, "messages": messages, "max_tokens": max_out}
         req = urllib.request.Request(
             base + "/chat/completions",
             data=json.dumps(body).encode(),
@@ -784,7 +796,18 @@ class Handler(BaseHTTPRequestHandler):
 
                 HUB.publish(Ev("task.created", "supervisor", f"İstem: {prompt[:70]}").envelope())
                 HUB.publish(Ev("agent.started", "supervisor", "Model çağrısı hazırlanıyor").envelope())
-                result = call_model(msgs, str(data.get("tier") or ""))
+                tier = str(data.get("tier") or "")
+                ck = cache_key(str(cfg.get("provider") or ""), str(cfg.get("model") or ""), tier, msgs, skill_id)
+                if ck in RESP_CACHE:
+                    result = dict(RESP_CACHE[ck])
+                    result["cached"] = True
+                    result["cost_usd"] = 0.0
+                else:
+                    result = call_model(msgs, tier)
+                    result["cached"] = False
+                    if len(RESP_CACHE) > 40:
+                        RESP_CACHE.clear()
+                    RESP_CACHE[ck] = dict(result)
                 HUB.publish(Ev(
                     "model.completed", "supervisor",
                     f"{result['model']} · {result['usage']['in']}→{result['usage']['out']} token",
