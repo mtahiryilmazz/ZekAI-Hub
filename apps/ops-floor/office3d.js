@@ -873,14 +873,15 @@ function shadowTexture() {
   return SHADOW_TEX;
 }
 
-let FOLDER_TEX = null;
-function folderTexture() {
-  if (FOLDER_TEX) return FOLDER_TEX;
+const FOLDER_TEX = {};
+function folderTexture(tone = "gold") {
+  if (FOLDER_TEX[tone]) return FOLDER_TEX[tone];
+  const colors = { gold: "#E8B45A", green: "#6FD3A0", red: "#F08A8A", orange: "#F0A04A" };
   const c = document.createElement("canvas");
   c.width = 128; c.height = 96;
   const g = c.getContext("2d");
   g.clearRect(0, 0, 128, 96);
-  g.fillStyle = "#E8B45A";
+  g.fillStyle = colors[tone] || colors.gold;
   g.strokeStyle = "rgba(0,0,0,0.5)";
   g.lineWidth = 4;
   g.beginPath();
@@ -891,8 +892,8 @@ function folderTexture() {
   g.strokeStyle = "rgba(0,0,0,0.22)";
   g.lineWidth = 3;
   g.beginPath(); g.moveTo(22, 48); g.lineTo(106, 48); g.stroke();
-  FOLDER_TEX = new THREE.CanvasTexture(c);
-  return FOLDER_TEX;
+  FOLDER_TEX[tone] = new THREE.CanvasTexture(c);
+  return FOLDER_TEX[tone];
 }
 
 /* ---------- ajan ---------- */
@@ -1636,7 +1637,13 @@ export function createOffice3D(container, state) {
       const fs = g.userData.folderSprite;
       if (fs) {
         fs.visible = !!a.folder;
-        fs.position.y = 1.95 + Math.sin(now * 0.004 + a.t) * 0.05;
+        fs.position.y = 1.95 + Math.sin(now * 0.004 + a.t) * 0.05;
+        const tone = a.folderTone || "gold";
+        if (fs.userData.tone !== tone) {
+          fs.material.map = folderTexture(tone);
+          fs.material.needsUpdate = true;
+          fs.userData.tone = tone;
+        }
       }
 
       // hareket yönüne dönüş
@@ -1743,6 +1750,8 @@ export function createOffice3D(container, state) {
           visualZ: g.userData.visualZ || 0,
           modelZ: g.userData.modelZ === undefined ? null : g.userData.modelZ,
           pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
+          tone: g.userData.folderSprite ? (g.userData.folderSprite.userData.tone || "gold") : null,
+          tex: g.userData.folderSprite && g.userData.folderSprite.material.map ? g.userData.folderSprite.material.map.uuid.slice(0, 6) : null,
           time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
         })),
       };

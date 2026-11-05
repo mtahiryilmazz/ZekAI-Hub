@@ -1071,17 +1071,39 @@ function nearestWalkable(x, y, self) {
   return null;
 }
 
-/* Görev dağıtımı: alt ajan yöneticinin masasına gidip görevi elden alır. */
-function startPickup(agentId, bossId) {
+/* Görev dağıtımı: alt ajanlar yöneticinin masası önündeki ayrı slotlara gelir. */
+const PICK_SLOTS = [-1.35, -0.68, 0, 0.68, 1.35];
+function startPickup(agentId, bossId, pickup = true) {
   const a = state.agents[agentId], boss = state.agents[bossId];
-  if (!a || !boss || a.handoff) return;
-  const dx = boss.x - a.x, dy = boss.y - a.y;
-  const d = Math.hypot(dx, dy) || 1;
-  if (d < 0.5) { a.folder = true; return; }
-  const px = boss.x - (dx / d) * 1.3;
-  const py = boss.y - (dy / d) * 1.3;
+  if (!a || !boss || agentId === bossId) return;
+  if (a.handoff) {
+    if (pickup) a.handoff.pickup = true; // brifingdeyse klasörü de alır
+    return;
+  }
+
+  const used = new Set();
+  for (const id in state.agents) {
+    const o = state.agents[id];
+    if (id !== agentId && o.handoff) used.add(o.handoff.slot);
+  }
+  let slot = 0;
+  for (let i = 0; i < PICK_SLOTS.length; i++) {
+    const idx = (Object.keys(state.agents).indexOf(agentId) + i) % PICK_SLOTS.length;
+    if (!used.has(idx)) { slot = idx; break; }
+    slot = i;
+  }
+  const px = boss.x + PICK_SLOTS[slot];
+  const py = boss.y - 2.4; // masanın önü (ziyaretçi tarafı)
   const spot = nearestWalkable(px, py, agentId) || [px, py];
-  a.handoff = { x: spot[0], y: spot[1], hold: 1.0, pickup: true };
+  a.handoff = { x: spot[0], y: spot[1], hold: pickup ? 1.2 : 2.6, pickup, slot };
+}
+
+/* Görev açıldığında tüm ekip brifinge çağrılır. */
+function summonAll(bossId = "supervisor") {
+  for (const id in state.agents) {
+    if (id === bossId) continue;
+    startPickup(id, bossId, false); // brifing: klasör yok, sadece toplanma
+  }
 }
 
 /* Ajanlar birbirinin içine girmesin: yumuşak itme + sert mesafe kontrolü. */
@@ -1123,7 +1145,7 @@ function stepAgent(a, dt) {
     if (dist < 0.3) {
       hd.hold -= dt;
       if (hd.hold <= 0) {
-        if (hd.pickup) a.folder = true; // klasörü aldı, masasına götürecek
+        if (hd.pickup) { a.folder = true; a.folderTone = "gold"; } // klasörü aldı, masasına götürecek
         a.handoff = null;
       }
       a.moving = false;
@@ -1222,6 +1244,7 @@ const state = {
   lastDecision: null,
   demo: true,
   transfers: [],
+  folderStamp: 0,
   catalog: (typeof DEFAULT_CATALOG !== "undefined" ? DEFAULT_CATALOG : []).map((c) => ({ ...c })),
   cast: (typeof DEFAULT_CAST !== "undefined" ? DEFAULT_CAST : {}),
 };
@@ -1245,6 +1268,7 @@ for (const a of AGENTS) {
     accessory: "none",
     charName: a.name,
     folder: false,
+  folderTone: "gold",
   };
   state.zonePressure[a.zone] = 0;
 }
@@ -1586,11 +1610,12 @@ const hexA = (hex, a) => {
 /* =====================================================================
    5. Sahne çizimi (statik katman + derinlik sıralı dinamik katman)
    ===================================================================== */
-function drawFolder(c, sx, sy, s = 1) {
+function drawFolder(c, sx, sy, s = 1, tone = "gold") {
   const w = 20 * s, h = 14 * s;
+  const FOLDER_COLORS = { gold: "#E8B45A", green: "#6FD3A0", red: "#F08A8A", orange: "#F0A04A" };
   c.save();
   c.translate(sx, sy);
-  c.fillStyle = "#E8B45A";
+  c.fillStyle = FOLDER_COLORS[tone] || FOLDER_COLORS.gold;
   c.strokeStyle = "rgba(0,0,0,.45)";
   c.lineWidth = 1;
   c.beginPath();
@@ -1647,7 +1672,7 @@ function draw(now) {
     const a = state.agents[id];
     if (!a.folder) continue;
     const [sx, sy] = proj(a.x, a.y, 0);
-    drawFolder(ctx, sx, sy - (62 + Math.sin(now * 0.004 + a.t) * 3) * view.as, view.as * 1.1);
+    drawFolder(ctx, sx, sy - (62 + Math.sin(now * 0.004 + a.t) * 3) * view.as, view.as * 1.1, a.folderTone);
   }
   for (const tr of state.transfers) {
     const A = state.agents[tr.from], B = state.agents[tr.to];
@@ -1717,15 +1742,37 @@ function emit(type, agentId, msg, opts = {}) {
   // olay → pipeline eşlemesi (canlı modda da doğru adım yansır)
   if (type === "task.created") {
     state.agents.supervisor.folder = true;
+    state.agents.supervisor.folderTone = "gold";
+    state.folderStamp++;
     state.pipeline = ["active", "idle", "idle", "idle", "idle"];
     renderPipeline();
+    summonAll("supervisor");
   } else if (type === "agent.started" && agentId !== "supervisor") {
     state.agents.supervisor.folder = true;
+    state.agents.supervisor.folderTone = "gold";
     startPickup(agentId, "supervisor");
   } else if (type === "task.completed" || type === "task.failed") {
-    for (const id in state.agents) state.agents[id].folder = false;
-    for (const id in state.agents) state.agents[id].handoff = null;
+    // renkli kapanış: başarı yeşil, başarısızlık kırmızı; 5 sn sonra temizlenir
+    const tone = type === "task.completed" ? "green" : "red";
+    for (const id in state.agents) {
+      const ag = state.agents[id];
+      ag.folder = true;
+      ag.folderTone = tone;
+      ag.handoff = null;
+      const token = (ag.folderToken = (ag.folderToken || 0) + 1);
+      setTimeout(() => {
+        if (ag.folderToken === token) ag.folder = false; // yeni renk geldiyse dokunma
+      }, 5000);
+    }
     state.transfers = [];
+  } else if (type === "review.failed") {
+    // düzeltme yolu: tüm ekip turuncuda, sonuç gelince yeşil/kırmızıya döner
+    state.folderStamp++;
+    for (const id in state.agents) {
+      const ag = state.agents[id];
+      ag.folder = true;
+      ag.folderTone = "orange";
+    }
   }
 
   if (type === "task.created") {
