@@ -98,10 +98,10 @@ if (-not $NoShortcut) {
         if (-not (Test-Path $dir)) { continue }
         $sc = $shell.CreateShortcut($path)
         $sc.TargetPath = 'powershell.exe'
-        $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSScriptRoot\start.ps1`" -Port $Port"
+        $sc.Arguments = "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSScriptRoot\ZekAI-Kontrol.ps1`" -Port $Port"
         $sc.WorkingDirectory = $Root
         if ($IconPath) { $sc.IconLocation = "$IconPath,0" }
-        $sc.Description = 'ZekAI Hub — Ajan Ops Floor'
+        $sc.Description = 'ZekAI Hub — kontrol paneli (başlat / durdur)'
         $sc.Save()
         Ok "kısayol: $path"
     }
@@ -119,10 +119,10 @@ if (-not $NoShortcut) {
 Ok 'kurulum kaydı yazıldı'
 
 Line
-Write-Host '  Kurulum tamam. Masaüstündeki "ZekAI Hub" kısayolundan açabilirsiniz.' -ForegroundColor Green
-Write-Host "  Doğrudan: powershell -File `"$PSScriptRoot\start.ps1`" -Port $Port" -ForegroundColor DarkGray
+Write-Host '  Kurulum tamam. Masaüstündeki "ZekAI Hub" kısayolu kontrol panelini açar.' -ForegroundColor Green
+Write-Host "  Kontrol paneli: `"$PSScriptRoot\ZekAI.cmd`"  ·  doğrudan: powershell -STA -File `"$PSScriptRoot\ZekAI-Kontrol.ps1`" -Port $Port" -ForegroundColor DarkGray
 Write-Host ''
 
 if ($Launch) {
-    & (Join-Path $PSScriptRoot 'start.ps1') -Port $Port
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', (Join-Path $PSScriptRoot 'ZekAI-Kontrol.ps1'), '-Port', "$Port")
 }

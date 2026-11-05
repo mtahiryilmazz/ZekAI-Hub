@@ -86,6 +86,10 @@ python tools/swarm_sim.py check events.jsonl  # şema doğrulama
 Kurulum sihirbazı Python 3.10+ arar; başka bağımlılık kurmaz (CLI ve sunucu stdlib).
 Docker gerekmez. Ayrıntı: `installer/README.md`.
 
+**Tek tık:** `installer\windows\ZekAI-Setup.cmd` → masaüstü kısayolu + kontrol paneli.
+**Kontrol paneli:** `installer\windows\ZekAI.cmd` — başlat / durdur / yeniden başlat / log / teşhis (WinForms, ek bağımlılık yok).
+Komut satırı: `.\Swarm.ps1 install | start | gui | doctor | uninstall`.
+
 ### URL parametreleri
 
 | Parametre | Etki |
