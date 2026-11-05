@@ -1341,16 +1341,19 @@ function emit(type, agentId, msg, opts = {}) {
   const a = state.agents[agentId];
   const cost = opts.cost || 0;
   const tok = opts.tokens || 0;
+  const isDemo = state.demo;
 
   state.events++;
-  state.cost += cost;
-  state.tokens += tok;
+  if (!isDemo) {
+    state.cost += cost;
+    state.tokens += tok;
+  }
   if (a) {
     a.lastEvent = msg;
     a.msg = msg;
     a.msgUntil = nowMs() + 4200;
     a.status = opts.status || (type === "agent.progress" ? "çalışıyor" : a.status);
-    a.spend += cost;
+    a.spend += isDemo ? 0 : cost;
     if (tok) a.steps += 1;
     if (opts.move !== false && type !== "tool.completed") {
       if (a.role) {
@@ -1364,7 +1367,7 @@ function emit(type, agentId, msg, opts = {}) {
     }
   }
 
-  addFeedEvent({ type, agentId, msg, cost, tok, severity: opts.severity || "info" });
+  addFeedEvent({ type, agentId, msg, cost: isDemo ? 0 : cost, tok: isDemo ? 0 : tok, severity: opts.severity || "info" });
   updateMetrics();
 
   // olay → pipeline eşlemesi (canlı modda da doğru adım yansır)
@@ -1699,15 +1702,24 @@ function setTheme(t, persist = true) {
 
 async function ensureOffice() {
   const gen = officeToken + 1; officeToken = gen;
-  if (office) return;
-  officeEl.innerHTML = '<div class="office-load">3D sahne yükleniyor…</div>';
+  if (office) { office.setActive(true); return; }
+  officeEl.innerHTML = '<div class="office-load">3D sahne yükleniyor… <span style="color:var(--dim)">(ilk açılış birkaç saniye sürebilir)</span></div>';
+  const timer = setTimeout(() => {
+    if (!office && gen === officeToken) {
+      officeEl.innerHTML = '<div class="office-load">3D sahne hâlâ yükleniyor · <button class="mini" data-retry="1">Yeniden dene</button></div>';
+    }
+  }, 9000);
   try {
     const mod = await import("./office3d.js");
-    if (gen !== officeToken || currentView !== "office") return;
+    if (gen !== officeToken || currentView !== "office") { clearTimeout(timer); return; }
     officeEl.innerHTML = "";
     office = mod.createOffice3D(officeEl, state);
+    office.setActive(true);
+    clearTimeout(timer);
   } catch (err) {
-    officeEl.innerHTML = '<div class="office-load">3D yüklenemedi · sayfayı sunucu üzerinden açın</div>';
+    clearTimeout(timer);
+    officeEl.innerHTML = '<div class="office-load">3D yüklenemedi (WebGL?) · <button class="mini" data-retry="1">Yeniden dene</button></div>';
+    console.warn("3D mount hatası", err);
   }
 }
 
@@ -1729,8 +1741,9 @@ function renderDash() {
 
   const spend = document.getElementById("kSpend");
   spend.textContent = "$" + state.cost.toFixed(4);
-  document.getElementById("kSpendSub").textContent =
-    state.events + " olay · " + state.tokens.toLocaleString("tr-TR") + " token";
+  document.getElementById("kSpendSub").textContent = state.demo
+    ? "demo olayları sayılmaz · " + state.events + " olay"
+    : state.events + " olay · " + state.tokens.toLocaleString("tr-TR") + " token";
 
   document.getElementById("kVerify").textContent = total ? Math.round((completed / total) * 100) + "%" : "—";
   document.getElementById("kVerifySub").textContent = total
@@ -2693,6 +2706,12 @@ document.getElementById("btnClearTasks").addEventListener("click", () => {
 });
 document.getElementById("btnTheme").addEventListener("click", () => {
   setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+});
+officeEl.addEventListener("click", (e) => {
+  if (e.target && e.target.dataset && e.target.dataset.retry) {
+    disposeOffice();
+    ensureOffice();
+  }
 });
 document.getElementById("sClose").addEventListener("click", () => openSettings(false));
 document.getElementById("sSave").addEventListener("click", () => saveSettings());

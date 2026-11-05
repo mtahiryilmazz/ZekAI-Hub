@@ -886,7 +886,7 @@ export function createOffice3D(container, state) {
   const key = new THREE.DirectionalLight(0xffe0b0, 1.55);
   key.position.set(9, 17, 11);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(1024, 1024);
   key.shadow.camera.left = -14;
   key.shadow.camera.right = 14;
   key.shadow.camera.top = 14;
