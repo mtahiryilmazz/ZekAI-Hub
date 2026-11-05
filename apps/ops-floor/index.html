@@ -236,37 +236,49 @@
   /* ---------- maskot paneli ---------- */
   .modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(4,7,11,.72);backdrop-filter:blur(8px)}
   .modal[hidden]{display:none}
-  .modal-box{width:min(880px,92vw);max-height:86vh;display:flex;flex-direction:column;
+  .modal-box{width:min(1100px,95vw);height:min(760px,90vh);max-height:90vh;display:flex;flex-direction:column;
     border:1px solid var(--line-strong);border-radius:14px;background:#0d131c;box-shadow:0 30px 80px -30px #000}
   .modal-box header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
   .modal-box h2{margin:0;font-size:14px;font-weight:600}
   .modal-box header .x{margin-left:auto;width:28px;height:28px;border-radius:7px;color:var(--muted);font-size:16px}
   .modal-box header .x:hover{background:rgba(255,255,255,.06);color:var(--text)}
-  .mbody{display:grid;grid-template-columns:1fr 232px 1.15fr;gap:18px;padding:16px;overflow:auto}
+  .mbody{display:grid;grid-template-columns:1fr 248px 1.15fr;gap:14px;padding:14px;overflow:hidden;
+    min-height:0;flex:1}
+  .mbody>section{display:flex;flex-direction:column;min-height:0}
+  #roleList{flex:1;min-height:0;overflow:auto;padding-right:4px}
   .mbody h3{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:0 0 10px;
     display:flex;align-items:center;gap:8px;font-weight:600}
-  .role{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+  .role{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
   .role:first-of-type{border-top:0}
   .role .rn{font-size:11.5px;width:104px;color:var(--text);flex:none}
   .role select{flex:1;min-width:0;background:#111926;color:var(--text);border:1px solid var(--line-strong);
     border-radius:6px;padding:5px 6px;font-size:11px}
   .role .rmodel{font:9px var(--mono);color:var(--dim);border:1px solid var(--line);border-radius:4px;
     padding:1px 5px;flex:none;white-space:nowrap}
-  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
-  .cc{border:1px solid var(--line);border-radius:9px;padding:9px;background:rgba(255,255,255,.02);position:relative}
+  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;align-content:start;
+    flex:1;min-height:0;overflow:auto;padding-right:4px}
+  .cc{border:1px solid var(--line);border-radius:9px;padding:7px;background:rgba(255,255,255,.02);position:relative}
   .cc .dot{width:22px;height:22px;border-radius:50%;display:block;margin-bottom:6px;
     border:1px solid rgba(255,255,255,.18);box-shadow:0 0 12px -2px currentColor}
   .cc .nm{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cc .sp{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
   .cc .del{position:absolute;top:6px;right:7px;color:#4E5B72;font-size:11px}
   .cc .del:hover{color:var(--rose)}
-  .pv{position:relative;height:236px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  .pv{position:relative;height:190px;border:1px solid var(--line);border-radius:12px;overflow:hidden;flex:none;
     background:radial-gradient(120% 90% at 50% 0%, rgba(111,168,255,.10), rgba(8,12,18,.9) 70%)}
   .pv canvas{position:absolute;inset:0}
   .pv .pvhint{position:absolute;left:10px;bottom:8px;font:9px var(--mono);color:var(--dim);letter-spacing:.05em}
   .pvmeta{margin-top:7px;font-size:10px;color:var(--muted);display:flex;gap:6px;align-items:center;min-height:14px}
   .pvmeta b{color:var(--text);font-weight:600}
-  .mform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .mform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;flex:none}
+  .procrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .hide{display:none !important}
+  @media (max-width:820px){
+    .mbody{grid-template-columns:1fr;overflow:auto}
+    .modal-box{height:min(860px,92vh)}
+    .pv{height:170px}
+    #roleList,.cat{overflow:visible}
+  }
   .mform input,.mform select{background:#111926;border:1px solid var(--line-strong);border-radius:6px;color:var(--text);
     padding:5px 7px;font-size:11px;min-width:0}
   .mform .wide{grid-column:1/-1}
@@ -729,6 +741,7 @@
         <div class="cat" id="catalogList"></div>
         <div class="mform">
           <input id="nName" placeholder="Karakter adı" maxlength="24" />
+          <div class="procrow wide" id="nProcRow">
           <select id="nSpecies">
             <option value="kedi">Kedi</option>
             <option value="kopek">Köpek</option>
@@ -748,6 +761,7 @@
             <option value="hat">Şapka</option>
             <option value="hair">Dikenli saç</option>
           </select>
+          </div>
           <input id="nColor" type="hidden" value="#E8B45A" />
           <div class="swatches" id="swatches"></div>
           <select id="nModelPick" class="wide"><option value="">Model seç (models/ klasörü)…</option></select>
@@ -2306,7 +2320,9 @@ function renderMascotPanel() {
     }
     const sp = document.createElement("div");
     sp.className = "sp";
-    sp.textContent = (SPECIES_LABEL[c.species] || c.species) + (c.accessory !== "none" ? " · " + ACC_LABEL[c.accessory] : "");
+    sp.textContent = c.model
+      ? ("GLB" + (Number(c.scale || 1) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") + " · hazır model")
+      : (SPECIES_LABEL[c.species] || c.species) + (c.accessory !== "none" ? " · " + ACC_LABEL[c.accessory] : "");
     card.append(del, dot, nm, sp);
     card.addEventListener("click", (ev) => {
       if (ev.target.closest(".del")) return;
@@ -2472,6 +2488,16 @@ let previewObj = null;
 let previewTimer = 0;
 let previewSeq = 0;
 
+/* GLB varsa tür/aksesuar/renk anlamsız: formu sadeleştir. */
+function syncModelMode() {
+  const field = document.getElementById("nModel");
+  const hasModel = !!(field && field.value || "").trim();
+  const row = document.getElementById("nProcRow");
+  const sw = document.getElementById("swatches");
+  if (row) row.classList.toggle("hide", hasModel);
+  if (sw) sw.classList.toggle("hide", hasModel);
+}
+
 function previewChar() {
   const read = (id, fb) => {
     const el = document.getElementById(id);
@@ -2491,6 +2517,7 @@ function previewChar() {
 function refreshPreview() {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(async () => {
+    syncModelMode();
     const modal = document.getElementById("mascotModal");
     const host = document.getElementById("mascotPreview");
     if (!modal || !host || modal.hidden) return;
@@ -2509,8 +2536,11 @@ function refreshPreview() {
     const info = document.getElementById("pvInfo");
     if (nm) nm.textContent = c.name;
     if (info) {
-      const label = c.model ? "GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") : "prosedürel";
-      info.textContent = label + " · " + (SPECIES_LABEL[c.species] || c.species);
+      if (c.model) {
+        info.textContent = "GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") + " · hazır model";
+      } else {
+        info.textContent = "prosedürel · " + (SPECIES_LABEL[c.species] || c.species);
+      }
     }
   }, 150);
 }
@@ -3287,6 +3317,7 @@ document.getElementById("nAdd").addEventListener("click", () => {
   document.getElementById("nName").value = "";
   document.getElementById("nModel").value = "";
   document.getElementById("nScale").value = 1;
+  syncModelMode();
   saveCast();
   renderMascotPanel();
   applyCast();
@@ -3358,10 +3389,10 @@ document.getElementById("nSpecies").addEventListener("change", (e) => {
 });
 for (const id of ["nAcc", "nModel", "nScale"]) {
   const el = document.getElementById(id);
-  if (el) el.addEventListener("change", refreshPreview);
+  if (el) el.addEventListener("change", () => { syncModelMode(); refreshPreview(); });
 }
 const nModelInput = document.getElementById("nModel");
-if (nModelInput) nModelInput.addEventListener("input", refreshPreview);
+if (nModelInput) nModelInput.addEventListener("input", () => { syncModelMode(); refreshPreview(); });
 const nScaleInput = document.getElementById("nScale");
 if (nScaleInput) nScaleInput.addEventListener("input", refreshPreview);
 
