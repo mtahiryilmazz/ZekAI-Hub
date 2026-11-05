@@ -242,7 +242,7 @@
   .modal-box h2{margin:0;font-size:14px;font-weight:600}
   .modal-box header .x{margin-left:auto;width:28px;height:28px;border-radius:7px;color:var(--muted);font-size:16px}
   .modal-box header .x:hover{background:rgba(255,255,255,.06);color:var(--text)}
-  .mbody{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:16px;overflow:auto}
+  .mbody{display:grid;grid-template-columns:1fr 232px 1.15fr;gap:18px;padding:16px;overflow:auto}
   .mbody h3{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:0 0 10px;
     display:flex;align-items:center;gap:8px;font-weight:600}
   .role{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
@@ -260,6 +260,12 @@
   .cc .sp{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
   .cc .del{position:absolute;top:6px;right:7px;color:#4E5B72;font-size:11px}
   .cc .del:hover{color:var(--rose)}
+  .pv{position:relative;height:236px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 0%, rgba(111,168,255,.10), rgba(8,12,18,.9) 70%)}
+  .pv canvas{position:absolute;inset:0}
+  .pv .pvhint{position:absolute;left:10px;bottom:8px;font:9px var(--mono);color:var(--dim);letter-spacing:.05em}
+  .pvmeta{margin-top:7px;font-size:10px;color:var(--muted);display:flex;gap:6px;align-items:center;min-height:14px}
+  .pvmeta b{color:var(--text);font-weight:600}
   .mform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
   .mform input,.mform select{background:#111926;border:1px solid var(--line-strong);border-radius:6px;color:var(--text);
     padding:5px 7px;font-size:11px;min-width:0}
@@ -712,6 +718,11 @@
       <section>
         <h3>Görev rolleri — karakter ataması</h3>
         <div id="roleList"></div>
+      </section>
+      <section>
+        <h3>Önizleme</h3>
+        <div class="pv" id="mascotPreview"><span class="pvhint">seçili karakter</span></div>
+        <div class="pvmeta"><b id="pvName">—</b><span id="pvInfo"></span></div>
       </section>
       <section>
         <h3>Karakter kataloğu <span id="catCount" style="color:var(--dim);font-family:var(--mono)"></span></h3>
@@ -2395,6 +2406,7 @@ function selectCharacter(c) {
   document.getElementById("nScale").value = c.scale || 1;
   document.getElementById("nAdd").textContent = "Güncelle";
   renderSwatches();
+  refreshPreview();
 }
 
 function previewColor(hex) {
@@ -2418,7 +2430,60 @@ function openMascot(open) {
     loadModels();
     renderSwatches();
     if (!editingId && state.catalog[0]) selectCharacter(state.catalog[0]);
+    refreshPreview();
+  } else {
+    clearTimeout(previewTimer);
+    if (previewObj) { try { previewObj.dispose(); } catch (e) { /* yoksay */ } previewObj = null; }
+    const host = document.getElementById("mascotPreview");
+    if (host) host.textContent = "";
   }
+}
+
+/* ---------- maskot önizlemesi ---------- */
+let previewObj = null;
+let previewTimer = 0;
+let previewSeq = 0;
+
+function previewChar() {
+  const read = (id, fb) => {
+    const el = document.getElementById(id);
+    return el && el.value ? el.value : fb;
+  };
+  const c = state.catalog.find((x) => x.id === editingId) || {};
+  return {
+    name: (read("nName", c.name) || "").trim() || c.name || "yeni karakter",
+    species: read("nSpecies", c.species) || c.species || "kedi",
+    accessory: read("nAcc", c.accessory) || c.accessory || "none",
+    color: read("nColor", c.color) || c.color || "#E8B45A",
+    model: (read("nModel", c.model) || "").trim(),
+    scale: Number(read("nScale", c.scale) || c.scale || 1),
+  };
+}
+
+function refreshPreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    const modal = document.getElementById("mascotModal");
+    const host = document.getElementById("mascotPreview");
+    if (!modal || !host || modal.hidden) return;
+    const seq = ++previewSeq;
+    let mod = null;
+    try { mod = await import("./office3d.js"); } catch (e) { return; }
+    if (seq !== previewSeq || modal.hidden) return;
+
+    if (previewObj) { try { previewObj.dispose(); } catch (e) { /* yoksay */ } previewObj = null; }
+    host.textContent = "";
+    const c = previewChar();
+    try { previewObj = mod.createMascotPreview(host, c); } catch (e) { host.textContent = "önizleme açılamadı"; return; }
+
+    const nm = document.getElementById("pvName");
+    const info = document.getElementById("pvInfo");
+    if (nm) nm.textContent = c.name;
+    if (info) {
+      const label = c.model ? "GLB" + (Number(c.scale) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "") : "prosedürel";
+      info.textContent = label + " · " + (SPECIES_LABEL[c.species] || c.species);
+    }
+  }, 150);
 }
 
 async function loadModels() {
@@ -3260,7 +3325,16 @@ document.getElementById("wheelPop").addEventListener("click", (e) => {
 document.getElementById("nSpecies").addEventListener("change", (e) => {
   const hex = SPECIES_COLORS[e.target.value];
   if (hex) previewColor(hex);
+  refreshPreview();
 });
+for (const id of ["nAcc", "nModel", "nScale"]) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("change", refreshPreview);
+}
+const nModelInput = document.getElementById("nModel");
+if (nModelInput) nModelInput.addEventListener("input", refreshPreview);
+const nScaleInput = document.getElementById("nScale");
+if (nScaleInput) nScaleInput.addEventListener("input", refreshPreview);
 
 document.getElementById("sModels").addEventListener("click", loadProviderModels);
 document.getElementById("sAddModel").addEventListener("click", () => {

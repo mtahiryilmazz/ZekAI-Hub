@@ -959,6 +959,118 @@ function makeAgent(a) {
   return g;
 }
 
+/* ---------- maskot paneli önizlemesi ---------- */
+export function createMascotPreview(container, char = {}) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 60);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.domElement.style.display = "block";
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
+  container.appendChild(renderer.domElement);
+
+  scene.add(new THREE.HemisphereLight(0x9db7e0, 0x0a0f18, 1.2));
+  const key = new THREE.DirectionalLight(0xffe0b0, 2.1);
+  key.position.set(2.6, 4.2, 3.2);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x6fa8ff, 1.15);
+  rim.position.set(-3, 2.2, -2.6);
+  scene.add(rim);
+
+  const root = new THREE.Group();
+  scene.add(root);
+
+  const mascot = makeMascot(char.species || "kedi", char.color || "#E8B45A", char.accessory || "none");
+  root.add(mascot.root);
+
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(0.55, 40),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.26, depthWrite: false })
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.004;
+  scene.add(disc);
+
+  camera.position.set(0, 0.62, 2.35);
+  camera.lookAt(0, 0.55, 0);
+
+  let mixer = null;
+  let disposed = false;
+  const url = String(char.model || "").trim();
+  if (url && !/sketchfab\.com/i.test(url)) {
+    loadModel(/^models\//i.test(url) ? "/" + url : url)
+      .then((gltf) => {
+        if (disposed) return;
+        const obj = cloneSkeleton(gltf.scene);
+        obj.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.frustumCulled = false; });
+        const s = Math.max(0.4, Math.min(2.8, Number(char.scale) || 1));
+        fitModel(obj, 1.15 * s, 0.84 * s);
+        obj.position.z = 0; // önizlemede ortada dursun
+        mascot.root.visible = false;
+        root.add(obj);
+        const clips = gltf.animations || [];
+        if (clips.length) {
+          mixer = new THREE.AnimationMixer(obj);
+          const clip = clips.find((c) => /idle|breath|loop|float|hover/i.test(c.name)) || clips[0];
+          mixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+        }
+        const box = new THREE.Box3().setFromObject(obj);
+        const h = Math.max(0.6, box.max.y);
+        const w = Math.max(0.5, Math.min(2.2, box.max.x - box.min.x));
+        disc.scale.setScalar(Math.max(0.7, w * 1.15));
+        camera.position.set(0, h * 0.56, Math.max(1.9, h * 2.15));
+        camera.lookAt(0, h * 0.48, 0);
+        camera.updateProjectionMatrix();
+      })
+      .catch(() => { /* prosedürel maskot kalsın */ });
+  }
+
+  const clock = new THREE.Clock();
+  let raf = 0;
+  const resize = () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+  const ro = new ResizeObserver(resize);
+  ro.observe(container);
+  resize();
+
+  function tick() {
+    raf = requestAnimationFrame(tick);
+    if (disposed) return;
+    const dt = Math.min(0.05, clock.getDelta());
+    if (mixer) mixer.update(dt);
+    root.rotation.y += dt * 0.42;
+    if (mascot.parts.tail) mascot.parts.tail.rotation.y = Math.sin(performance.now() * 0.003) * 0.3;
+    renderer.render(scene, camera);
+  }
+  tick();
+
+  return {
+    dispose() {
+      disposed = true;
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      scene.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) { if (m.map) m.map.dispose(); m.dispose(); }
+        }
+      });
+      renderer.dispose();
+      if (renderer.forceContextLoss) renderer.forceContextLoss();
+      renderer.domElement.remove();
+    },
+  };
+}
+
 /* ---------- sahne ---------- */
 export function createOffice3D(container, state) {
   const scene = new THREE.Scene();
