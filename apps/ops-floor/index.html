@@ -741,6 +741,12 @@
           <div class="swatches" id="swatches"></div>
           <select id="nModelPick" class="wide"><option value="">Model seç (models/ klasörü)…</option></select>
           <input id="nModel" class="wide" placeholder="veya model yolu: /models/karakter.glb" />
+          <label class="wide" style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--dim)">
+            Model ölçeği
+            <input id="nScale" type="number" min="0.5" max="2.6" step="0.05" value="1"
+              style="width:76px;background:#111926;border:1px solid var(--line-strong);border-radius:6px;color:var(--text);padding:5px 7px;font:11px var(--mono)" />
+            <span style="font-family:var(--mono)">× · 1 = masa boyu</span>
+          </label>
           <button class="btn primary wide" id="nAdd">Kataloğa ekle</button>
         </div>
       </section>
@@ -2173,6 +2179,7 @@ function applyCast(rebuild = true) {
     a.accessory = c.accessory;
     a.charName = c.name;
     a.model = c.model || "";
+    a.modelScale = c.scale || 1;
   }
   if (!rebuild) return;
   saveCast();
@@ -2254,7 +2261,7 @@ function renderMascotPanel() {
     nm.textContent = c.name;
     if (c.model) {
       const badge = document.createElement("span");
-      badge.textContent = "GLB";
+      badge.textContent = "GLB" + (Number(c.scale || 1) !== 1 ? " ×" + Number(c.scale).toFixed(2).replace(/0$/, "") : "");
       badge.style.cssText = "font:600 8px var(--mono);color:var(--teal);border:1px solid rgba(111,211,192,.4);border-radius:4px;padding:0 3px;margin-left:4px";
       nm.appendChild(badge);
     }
@@ -2385,6 +2392,7 @@ function selectCharacter(c) {
   document.getElementById("nColor").value = c.color;
   document.getElementById("nModel").value = c.model || "";
   document.getElementById("nModelPick").value = c.model || "";
+  document.getElementById("nScale").value = c.scale || 1;
   document.getElementById("nAdd").textContent = "Güncelle";
   renderSwatches();
 }
@@ -3172,6 +3180,7 @@ document.getElementById("nAdd").addEventListener("click", () => {
     accessory: document.getElementById("nAcc").value,
     color: document.getElementById("nColor").value,
     model: (document.getElementById("nModel").value || "").trim(),
+    scale: Math.max(0.5, Math.min(2.6, Number(document.getElementById("nScale").value || 1) || 1)),
   };
   if (editingId) {
     const c = state.catalog.find((x) => x.id === editingId);
@@ -3183,6 +3192,7 @@ document.getElementById("nAdd").addEventListener("click", () => {
   }
   document.getElementById("nName").value = "";
   document.getElementById("nModel").value = "";
+  document.getElementById("nScale").value = 1;
   saveCast();
   renderMascotPanel();
   applyCast();

@@ -49,7 +49,7 @@ function fitModel(obj, height = 1.15, footprint = 0.84) {
   obj.position.x -= center.x;
   obj.position.z -= center.z;
   obj.position.y -= box.min.y;
-  obj.position.z += 0.26; // masa kenarından uzaklaş
+  obj.position.z += Math.max(0.26, footprint * 0.58); // masa kenarından uzaklaş (büyük modelde daha çok)
   obj.updateMatrixWorld(true);
   return { size: size.toArray().map((n) => Number(n.toFixed(2))), scale: Number(scale.toFixed(3)) };
 }
@@ -872,7 +872,10 @@ function makeAgent(a) {
             }
           });
           normalizeHeight(obj, 1.4);
-          g.userData.modelSize = fitModel(obj, 1.15, 0.84).size;
+          const ms = Math.max(0.4, Math.min(2.8, Number(a.modelScale) || 1));
+          const fit = fitModel(obj, 1.15 * ms, 0.84 * ms);
+          g.userData.modelSize = fit.size;
+          g.userData.modelScale = ms;
           mascot.root.visible = false;
           g.add(obj);
           g.userData.modelFailed = false;

@@ -18,7 +18,9 @@ Model iskelet (skin) ve animasyon klipleri içeriyorsa ofiste otomatik oynar.
   Bulunamazsa ilk klip sürekli oynar.
 - **Durum eşlemesi:** boştayken `idle`, yürürken `walk`, görevdeyken `work`; geçişler 0,22 sn fade ile.
 - **İkinci kopya:** Aynı model birden fazla ajana atanırsa iskelet `SkeletonUtils.clone` ile kopyalanır; animasyonlar bağımsız oynar.
-- **Ölçü:** Model 1,15 birim boya ve 0,84 birim ayak izine sığdırılır, taban zemine oturur, masa kenarından 0,26 birim uzaklaştırılır.
+- **Ölçü:** Model 1,15 birim boya ve 0,84 birim ayak izine sığdırılır, taban zemine oturur, masa kenarından uzaklaştırılır.
+  Karakter başına **Model ölçeği** (0,5–2,6×) verilebilir: Maskot → karakter → Model ölçeği. 1 = masa boyu,
+  büyük modeller için 1,5–2,2 aralığı önerilir; ayak izi büyüdükçe model masadan otomatik olarak uzaklaşır.
 
 ## Format seçimi
 
