@@ -928,6 +928,7 @@ const state = {
   approvals: { required: 0, approved: 0, rejected: 0 },
   lastDecision: null,
   demo: true,
+  transfers: [],
   catalog: (typeof DEFAULT_CATALOG !== "undefined" ? DEFAULT_CATALOG : []).map((c) => ({ ...c })),
   cast: (typeof DEFAULT_CAST !== "undefined" ? DEFAULT_CAST : {}),
 };
@@ -949,6 +950,7 @@ for (const a of AGENTS) {
     species: a.species || "kedi",
     accessory: "none",
     charName: a.name,
+    folder: false,
   };
   state.zonePressure[a.zone] = 0;
 }
@@ -1290,6 +1292,35 @@ const hexA = (hex, a) => {
 /* =====================================================================
    5. Sahne çizimi (statik katman + derinlik sıralı dinamik katman)
    ===================================================================== */
+function drawFolder(c, sx, sy, s = 1) {
+  const w = 20 * s, h = 14 * s;
+  c.save();
+  c.translate(sx, sy);
+  c.fillStyle = "#E8B45A";
+  c.strokeStyle = "rgba(0,0,0,.45)";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(-w / 2, -h / 2);
+  c.lineTo(-w / 2 + w * 0.28, -h / 2);
+  c.lineTo(-w / 2 + w * 0.36, -h / 2 - 4 * s);
+  c.lineTo(-w / 2 + w * 0.62, -h / 2 - 4 * s);
+  c.lineTo(-w / 2 + w * 0.7, -h / 2);
+  c.lineTo(w / 2, -h / 2);
+  c.quadraticCurveTo(w / 2 + 2 * s, -h / 2, w / 2 + 2 * s, -h / 2 + 2 * s);
+  c.lineTo(w / 2 + 2 * s, h / 2 - 2 * s);
+  c.quadraticCurveTo(w / 2 + 2 * s, h / 2, w / 2, h / 2);
+  c.lineTo(-w / 2, h / 2);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.strokeStyle = "rgba(0,0,0,.22)";
+  c.beginPath();
+  c.moveTo(-w / 2 + 2 * s, 0);
+  c.lineTo(w / 2 + 2 * s, 0);
+  c.stroke();
+  c.restore();
+}
+
 function draw(now) {
   ctx.clearRect(0, 0, view.w, view.h);
   ctx.drawImage(bg, 0, 0, view.w, view.h);
@@ -1316,6 +1347,24 @@ function draw(now) {
 
   items.sort((p, q) => p.d - q.d);
   for (const it of items) it.fn();
+
+  // klasörler: aktif ajanların üstünde + uçan klasör
+  for (const id in state.agents) {
+    const a = state.agents[id];
+    if (!a.folder) continue;
+    const [sx, sy] = proj(a.x, a.y, 0);
+    drawFolder(ctx, sx, sy - (62 + Math.sin(now * 0.004 + a.t) * 3) * view.as, view.as * 1.1);
+  }
+  for (const tr of state.transfers) {
+    const A = state.agents[tr.from], B = state.agents[tr.to];
+    if (!A || !B) continue;
+    const k = Math.min(1, tr.t / tr.dur);
+    const x = A.x + (B.x - A.x) * k;
+    const y = A.y + (B.y - A.y) * k;
+    const z = 0.6 + Math.sin(Math.PI * k) * 0.9;
+    const [sx, sy] = proj(x, y, z);
+    drawFolder(ctx, sx, sy - 26, view.as * 1.15);
+  }
 }
 
 /* =====================================================================
@@ -1371,6 +1420,20 @@ function emit(type, agentId, msg, opts = {}) {
   updateMetrics();
 
   // olay → pipeline eşlemesi (canlı modda da doğru adım yansır)
+  if (type === "task.created") {
+    state.agents.supervisor.folder = true;
+    state.pipeline = ["active", "idle", "idle", "idle", "idle"];
+    renderPipeline();
+  } else if (type === "agent.started" && agentId !== "supervisor") {
+    state.agents.supervisor.folder = true;
+    if (!state.transfers.some((t) => t.to === agentId)) {
+      state.transfers.push({ from: "supervisor", to: agentId, t: 0, dur: 0.9 });
+    }
+  } else if (type === "task.completed" || type === "task.failed") {
+    for (const id in state.agents) state.agents[id].folder = false;
+    state.transfers = [];
+  }
+
   if (type === "task.created") {
     state.pipeline = ["active", "idle", "idle", "idle", "idle"];
     renderPipeline();
@@ -2786,6 +2849,14 @@ function frame(now) {
 
   if (!state.paused) {
     tickSim(dt);
+    for (let i = state.transfers.length - 1; i >= 0; i--) {
+      const tr = state.transfers[i];
+      tr.t += dt;
+      if (tr.t >= tr.dur) {
+        if (state.agents[tr.to]) state.agents[tr.to].folder = true;
+        state.transfers.splice(i, 1);
+      }
+    }
     for (const id in state.agents) {
       const a = state.agents[id];
       a.t += dt;
@@ -2867,6 +2938,11 @@ function boot() {
   });
 
   if (p.get("panel") === "1") setTimeout(() => openMascot(true), 250);
+  if (p.get("folders") === "1") {
+    state.agents.supervisor.folder = true;
+    state.agents.analyst.folder = true;
+    state.transfers = [{ from: "supervisor", to: "builder", t: 0.45, dur: 1e6 }];
+  }
   if (p.get("settings") === "1") setTimeout(() => openSettings(true), 250);
   loadSettings();
 

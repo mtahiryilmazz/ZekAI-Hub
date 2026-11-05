@@ -761,6 +761,28 @@ function shadowTexture() {
   return SHADOW_TEX;
 }
 
+let FOLDER_TEX = null;
+function folderTexture() {
+  if (FOLDER_TEX) return FOLDER_TEX;
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 96;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, 128, 96);
+  g.fillStyle = "#E8B45A";
+  g.strokeStyle = "rgba(0,0,0,0.5)";
+  g.lineWidth = 4;
+  g.beginPath();
+  g.moveTo(18, 34); g.lineTo(52, 34); g.lineTo(58, 22); g.lineTo(86, 22);
+  g.lineTo(94, 34); g.lineTo(110, 34); g.lineTo(110, 78); g.lineTo(18, 78);
+  g.closePath();
+  g.fill(); g.stroke();
+  g.strokeStyle = "rgba(0,0,0,0.22)";
+  g.lineWidth = 3;
+  g.beginPath(); g.moveTo(22, 48); g.lineTo(106, 48); g.stroke();
+  FOLDER_TEX = new THREE.CanvasTexture(c);
+  return FOLDER_TEX;
+}
+
 /* ---------- ajan ---------- */
 function makeAgent(a) {
   const g = new THREE.Group();
@@ -856,7 +878,13 @@ function makeAgent(a) {
   sprite.scale.set(1.5, 0.37, 1);
   g.add(sprite);
 
-  g.userData = { mascot, ring, ringMat, halo, sprite, contact };
+  const folderSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: folderTexture(), transparent: true, depthWrite: false }));
+  folderSprite.position.y = 1.95;
+  folderSprite.scale.set(0.52, 0.39, 1);
+  folderSprite.visible = false;
+  g.add(folderSprite);
+
+  g.userData = { mascot, ring, ringMat, halo, sprite, contact, folderSprite };
   return g;
 }
 
@@ -1033,6 +1061,11 @@ export function createOffice3D(container, state) {
     if (g.userData.contact) contacts.push(g.userData.contact);
   }
 
+  const transferSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: folderTexture(), transparent: true, depthWrite: false }));
+  transferSprite.scale.set(0.6, 0.45, 1);
+  transferSprite.visible = false;
+  scene.add(transferSprite);
+
   /* ---------- tema / görünürlük ---------- */
   function applyTheme() {
     const light = document.documentElement.dataset.theme === "light";
@@ -1147,6 +1180,12 @@ export function createOffice3D(container, state) {
         arm.rotation.x = a.moving ? Math.sin(phase + i * Math.PI) * 0.45 : Math.sin(now * 0.002 + a.t + i) * 0.06;
       }
 
+      const fs = g.userData.folderSprite;
+      if (fs) {
+        fs.visible = !!a.folder;
+        fs.position.y = 1.95 + Math.sin(now * 0.004 + a.t) * 0.05;
+      }
+
       // hareket yönüne dönüş
       const vx = toX(a.x) - g.position.x;
       const vz = toZ(a.y) - g.position.z;
@@ -1175,6 +1214,24 @@ export function createOffice3D(container, state) {
 
       const scr = a.__screen;
       if (scr) scr.emissiveIntensity = working ? 0.9 : 0.15;
+    }
+
+    const tr = (state.transfers || [])[0];
+    if (tr) {
+      const A = avatars[tr.from], B = avatars[tr.to];
+      if (A && B) {
+        const k = Math.min(1, tr.t / tr.dur);
+        transferSprite.position.set(
+          A.position.x + (B.position.x - A.position.x) * k,
+          1.35 + Math.sin(Math.PI * k) * 0.9,
+          A.position.z + (B.position.z - A.position.z) * k
+        );
+        transferSprite.visible = true;
+      } else {
+        transferSprite.visible = false;
+      }
+    } else {
+      transferSprite.visible = false;
     }
 
     renderer.render(scene, camera);
