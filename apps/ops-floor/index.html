@@ -221,6 +221,12 @@
   #office3d[hidden]{display:none}
   .office-hint{position:absolute;left:16px;bottom:14px;z-index:3;color:var(--dim);font-size:10.5px;border:1px solid var(--line);
     border-radius:9px;padding:7px 11px;background:rgba(10,14,20,.72);backdrop-filter:blur(6px)}
+  .office-modes{position:absolute;right:16px;top:14px;z-index:4;display:flex;gap:6px;padding:4px;border-radius:10px;
+    border:1px solid var(--line);background:rgba(10,14,20,.78);backdrop-filter:blur(8px)}
+  .office-modes button{font:10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    padding:7px 10px;border-radius:7px}
+  .office-modes button.on{background:rgba(232,180,90,.16);color:var(--amber)}
+  .office-modes button:hover{color:var(--text)}
   .office-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px;z-index:3}
 
   @media (max-width:1300px){ .task{display:none} }
@@ -625,6 +631,10 @@
       </div>
 
       <div id="office3d" hidden></div>
+      <div class="office-modes" id="officeModes" hidden>
+        <button data-mode="orbit" class="on">Döndür</button>
+        <button data-mode="walk">Gezin</button>
+      </div>
       <div class="office-hint" id="officeHint" hidden>Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: sıfırla</div>
 
       <canvas id="floor" aria-label="Ajan ofisi görselleştirmesi"></canvas>
@@ -1776,6 +1786,7 @@ const stageEl = document.getElementById("stage");
 const dashEl = document.getElementById("dash");
 const officeEl = document.getElementById("office3d");
 const officeHint = document.getElementById("officeHint");
+const officeModes = document.getElementById("officeModes");
 const floorEl = document.getElementById("floor");
 const flatEl = document.getElementById("flat");
 const tasksEl = document.getElementById("tasksView");
@@ -1799,6 +1810,10 @@ function setView(v, persist = true) {
   flatEl.hidden = v !== "list";
   if (hudEl) hudEl.style.display = v === "floor" ? "" : "none";
   if (hintEl) hintEl.style.display = v === "floor" ? "" : "none";
+  if (officeModes) officeModes.hidden = v !== "office";
+  if (v === "office" && officeHint && office && office.getMode && office.getMode() === "orbit") {
+    officeHint.textContent = "Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: sıfırla";
+  }
 
   document.querySelectorAll(".vbtn").forEach((b) => {
     const on = b.dataset.view === v;
@@ -2970,6 +2985,26 @@ document.getElementById("qYes").addEventListener("click", () => decideApproval(t
 document.getElementById("qNo").addEventListener("click", () => decideApproval(false));
 
 document.getElementById("btnMascot").addEventListener("click", () => openMascot(true));
+document.getElementById("officeModes").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-mode]");
+  if (!b || !office || !office.setMode) return;
+  office.setMode(b.dataset.mode);
+});
+window.addEventListener("zk-office-mode", (e) => {
+  const m = (e.detail && e.detail.mode) || "orbit";
+  document.querySelectorAll("#officeModes [data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
+  if (officeHint) {
+    officeHint.textContent = m === "walk"
+      ? "WASD/oklar: yürü · Fare: bak · Shift: koş · Esc: çık"
+      : "Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: sıfırla";
+  }
+});
+window.addEventListener("zk-webgl-lost", () => {
+  if (currentView === "office") officeError("WebGL bağlamı kayboldu");
+});
+window.addEventListener("zk-webgl-restored", () => {
+  if (currentView === "office" && office) officeEl.querySelectorAll(".office-load").forEach((n) => n.remove());
+});
 document.getElementById("btnSkills").addEventListener("click", () => openSkills(true));
 document.getElementById("skClose").addEventListener("click", () => openSkills(false));
 document.getElementById("skSave").addEventListener("click", saveSkill);

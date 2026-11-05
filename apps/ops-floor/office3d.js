@@ -4,6 +4,55 @@
 
 import * as THREE from "./vendor/three.module.min.js";
 import { GLTFLoader } from "./vendor/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "./vendor/utils/SkeletonUtils.js";
+
+const gltfLoader = new GLTFLoader();
+const gltfCache = new Map();
+
+function loadModel(url) {
+  if (!gltfCache.has(url)) {
+    gltfCache.set(url, new Promise((resolve, reject) => {
+      gltfLoader.load(url, resolve, undefined, reject);
+    }).catch((err) => {
+      gltfCache.delete(url);
+      throw err;
+    }));
+  }
+  return gltfCache.get(url);
+}
+
+function normalizeHeight(obj, target) {
+  obj.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  obj.scale.multiplyScalar(target / Math.max(size.y, 0.001));
+  obj.updateMatrixWorld(true);
+  box.setFromObject(obj);
+  obj.position.y -= box.min.y;
+  return box;
+}
+
+/* Modeli masaya oturtur: hem boy hem ayak izi sınırlı, taban zemine, merkez direğe hizalı. */
+function fitModel(obj, height = 1.15, footprint = 0.84) {
+  obj.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(obj);
+  let size = box.getSize(new THREE.Vector3());
+  const scale = Math.min(
+    height / Math.max(size.y, 1e-3),
+    footprint / Math.max(size.x, size.z, 1e-3)
+  );
+  obj.scale.multiplyScalar(scale);
+  obj.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(obj);
+  size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  obj.position.x -= center.x;
+  obj.position.z -= center.z;
+  obj.position.y -= box.min.y;
+  obj.position.z += 0.26; // masa kenarından uzaklaş
+  obj.updateMatrixWorld(true);
+  return { size: size.toArray().map((n) => Number(n.toFixed(2))), scale: Number(scale.toFixed(3)) };
+}
 
 const W = 18, H = 14;
 const toX = (x) => x - W / 2;
@@ -813,30 +862,49 @@ function makeAgent(a) {
     if (/sketchfab\.com\/3d-models\//i.test(src)) {
       window.dispatchEvent(new CustomEvent("zk-model-error", { detail: { agent: a.name, url: src, reason: "Sketchfab sayfa bağlantısı — indirilebilir .glb adresi gerekir" } }));
     } else {
-      new GLTFLoader().load(
-        src,
-        (gltf) => {
-          const obj = gltf.scene;
+      loadModel(src).then((gltf) => {
+          const obj = cloneSkeleton(gltf.scene);
           obj.traverse((o) => {
-            if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+            if (o.isMesh || o.isSkinnedMesh) {
+              o.castShadow = true;
+              o.receiveShadow = true;
+              o.frustumCulled = false; // iskelet deformasyonunda yanlış kesilmeyi önler
+            }
           });
-          obj.updateMatrixWorld(true);
-          const box = new THREE.Box3().setFromObject(obj);
-          const size = box.getSize(new THREE.Vector3());
-          obj.scale.setScalar(1.4 / Math.max(size.y, 0.001));
-          obj.updateMatrixWorld(true);
-          box.setFromObject(obj);
-          obj.position.y -= box.min.y;
+          normalizeHeight(obj, 1.4);
+          g.userData.modelSize = fitModel(obj, 1.15, 0.84).size;
           mascot.root.visible = false;
           g.add(obj);
           g.userData.modelFailed = false;
-        },
-        undefined,
-        () => {
+
+          const clips = gltf.animations || [];
+          if (clips.length) {
+            const mixer = new THREE.AnimationMixer(obj);
+            const actions = clips.map((c) => {
+              const act = mixer.clipAction(c);
+              act.setLoop(THREE.LoopRepeat, Infinity);
+              return { name: c.name, action: act };
+            });
+            const pick = (re) => actions.find((x) => re.test(x.name)) || null;
+            const idle = (pick(/idle|breath|stand|loop|float|hover/i) || actions[0]).action;
+            const walking = pick(/walk|run|move|drift|fly|swim/i);
+            const work = pick(/work|type|typing|sit|read|code|dance/i);
+            g.userData.mixer = mixer;
+            g.userData.clipNames = actions.map((x) => x.name);
+            g.userData.idle = idle;
+            g.userData.walk = walking ? walking.action : null;
+            g.userData.work = work ? work.action : null;
+            g.userData.current = idle;
+            idle.play();
+            window.dispatchEvent(new CustomEvent("zk-model-ready", { detail: { agent: a.name, clips: clips.length } }));
+          } else {
+            window.dispatchEvent(new CustomEvent("zk-model-ready", { detail: { agent: a.name, clips: 0 } }));
+          }
+        })
+        .catch(() => {
           g.userData.modelFailed = true;
           window.dispatchEvent(new CustomEvent("zk-model-error", { detail: { agent: a.name, url: src, reason: "model yüklenemedi (404 / CORS / geçersiz GLB)" } }));
-        }
-      );
+        });
     }
   }
 
@@ -895,6 +963,7 @@ export function createOffice3D(container, state) {
   scene.fog = new THREE.Fog(0x070a10, 32, 70);
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+  let contextLost = false;
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
   renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
@@ -908,7 +977,14 @@ export function createOffice3D(container, state) {
   container.appendChild(renderer.domElement);
   renderer.domElement.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
+    contextLost = true;
     window.dispatchEvent(new CustomEvent("zk-webgl-lost"));
+  });
+  renderer.domElement.addEventListener("webglcontextrestored", () => {
+    contextLost = false;
+    clock.getDelta();
+    resize();
+    window.dispatchEvent(new CustomEvent("zk-webgl-restored"));
   });
 
   scene.add(new THREE.HemisphereLight(0x9db7e0, 0x0a0f18, 1.05));
@@ -1125,6 +1201,95 @@ export function createOffice3D(container, state) {
   };
   apply();
 
+  /* ---------- birinci şahıs gezinme (Sims tarzı) ---------- */
+  camera.rotation.order = "YXZ";
+  let mode = "orbit";
+  const viewEl = renderer.domElement;
+  const walk = { yaw: 0, pitch: 0, pos: new THREE.Vector3(0, 1.62, 5.2), keys: Object.create(null) };
+
+  const obstacles = [];
+  for (const a of Object.values(state.agents)) {
+    obstacles.push({ x: toX(a.desk[0] + 0.95), z: toZ(a.desk[1] + 0.48), w: 1.95, d: 1.0, agentId: a.id });
+  }
+  obstacles.push({ x: toX(10.9 + 0.9), z: toZ(11.2 + 0.4), w: 2.4, d: 1.2 });
+  obstacles.push({ x: toX(15.9 + 0.35), z: toZ(8.0 + 0.25), w: 0.9, d: 0.7 });
+  obstacles.push({ x: toX(15.9 + 0.35), z: toZ(9.2 + 0.25), w: 0.9, d: 0.7 });
+  obstacles.push({ x: toX(0.9), z: toZ(0.8), w: 0.6, d: 0.6 });
+  obstacles.push({ x: toX(17.2), z: toZ(12.9), w: 0.6, d: 0.6 });
+  obstacles.push({ x: toX(8.4), z: toZ(0.8), w: 0.6, d: 0.6 });
+
+  const blocked = (x, z, self) => {
+    if (x < -8.4 || x > 8.4 || z < -6.4 || z > 6.4) return true;
+    for (const o of obstacles) {
+      if (self && o.agentId === self) continue; // kendi masasına oturabilsin
+      if (Math.abs(x - o.x) < o.w / 2 + 0.26 && Math.abs(z - o.z) < o.d / 2 + 0.26) return true;
+    }
+    return false;
+  };
+
+  function applyWalk() {
+    camera.position.set(walk.pos.x, walk.pos.y, walk.pos.z);
+    camera.rotation.set(walk.pitch, walk.yaw, 0, "YXZ");
+  }
+
+  function emitMode() {
+    window.dispatchEvent(new CustomEvent("zk-office-mode", { detail: { mode } }));
+  }
+
+  function setMode(m) {
+    const next = m === "walk" ? "walk" : "orbit";
+    if (next === mode) {
+      if (next === "walk" && viewEl.requestPointerLock) { try { viewEl.requestPointerLock(); } catch (e) { /* yoksay */ } }
+      return;
+    }
+    mode = next;
+    if (mode === "walk") {
+      walk.pos.set(0, 1.62, 5.2);
+      walk.yaw = 0;
+      walk.pitch = 0;
+      for (const k in walk.keys) walk.keys[k] = false;
+      applyWalk();
+      el.style.cursor = "default";
+      const lock = viewEl.requestPointerLock ? viewEl.requestPointerLock() : null;
+      if (lock && typeof lock.catch === "function") lock.catch(() => { /* kilit reddedildi: sürükle-bak */ });
+    } else {
+      if (document.exitPointerLock) document.exitPointerLock();
+      el.style.cursor = "grab";
+      apply();
+    }
+    emitMode();
+  }
+
+  const walkAbort = new AbortController();
+  const walkOpts = { signal: walkAbort.signal };
+
+  viewEl.addEventListener("mousemove", (e) => {
+    if (mode !== "walk" || document.pointerLockElement !== viewEl) return;
+    walk.yaw -= e.movementX * 0.0022;
+    walk.pitch = Math.max(-1.1, Math.min(1.1, walk.pitch - e.movementY * 0.0022));
+  }, walkOpts);
+
+  const WALK_KEYS = ["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"];
+  document.addEventListener("keydown", (e) => {
+    if (mode !== "walk") return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    const k = String(e.key || "").toLowerCase();
+    if (!WALK_KEYS.includes(k)) return;
+    walk.keys[k] = true;
+    e.preventDefault();
+    e.stopPropagation();
+  }, walkOpts);
+
+  document.addEventListener("keyup", (e) => {
+    if (mode !== "walk") return;
+    walk.keys[String(e.key || "").toLowerCase()] = false;
+  }, walkOpts);
+
+  document.addEventListener("pointerlockchange", () => {
+    if (mode === "walk" && document.pointerLockElement !== viewEl) setMode("orbit");
+  }, walkOpts);
+
   let drag = null;
   let downAt = null;
   const raycaster = new THREE.Raycaster();
@@ -1145,6 +1310,14 @@ export function createOffice3D(container, state) {
   el.style.cursor = "grab";
   el.style.touchAction = "none";
   el.addEventListener("pointerdown", (e) => {
+    if (mode === "walk") {
+      // kilit yoksa sürükleyerek bakış
+      if (document.pointerLockElement !== el) {
+        drag = { x: e.clientX, y: e.clientY, look: true };
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* yoksay */ }
+      }
+      return;
+    }
     drag = { x: e.clientX, y: e.clientY };
     downAt = { x: e.clientX, y: e.clientY, moved: false };
     el.setPointerCapture(e.pointerId);
@@ -1152,6 +1325,12 @@ export function createOffice3D(container, state) {
   });
   el.addEventListener("pointermove", (e) => {
     if (!drag) return;
+    if (drag.look) {
+      walk.yaw -= (e.clientX - drag.x) * 0.005;
+      walk.pitch = Math.max(-1.1, Math.min(1.1, walk.pitch - (e.clientY - drag.y) * 0.004));
+      drag = { x: e.clientX, y: e.clientY, look: true };
+      return;
+    }
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) downAt.moved = true;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag = { x: e.clientX, y: e.clientY };
@@ -1163,36 +1342,78 @@ export function createOffice3D(container, state) {
     if (downAt && !downAt.moved && e && e.clientX !== undefined) pickAgent(e);
     downAt = null;
     drag = null;
-    el.style.cursor = "grab";
+    el.style.cursor = mode === "walk" ? "default" : "grab";
   };
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", () => { downAt = null; drag = null; el.style.cursor = "grab"; });
   el.addEventListener("wheel", (e) => {
     e.preventDefault();
+    if (mode === "walk") return;
     radius = Math.max(12, Math.min(40, radius + e.deltaY * 0.02));
     apply();
   }, { passive: false });
-  el.addEventListener("dblclick", () => { theta = 0.66; phi = 0.95; radius = 16.5; apply(); });
+  el.addEventListener("dblclick", () => { if (mode === "walk") return; theta = 0.66; phi = 0.95; radius = 16.5; apply(); });
 
   /* ---------- döngü ---------- */
   let raf = 0;
+  let frames = 0;
+  let lastDt = 0;
   const clock = new THREE.Clock();
 
   function tick() {
     raf = requestAnimationFrame(tick);
-    if (!active) return;
-    const dt = Math.min(0.05, clock.getDelta());
+    if (!active || contextLost) return;
+    frame(Math.min(0.05, clock.getDelta()));
+  }
+
+  function frame(dt) {
+    frames++;
+    lastDt = dt;
     const now = performance.now();
 
     for (const a of Object.values(state.agents)) {
       const g = avatars[a.id];
       if (!g) continue;
-      g.position.x += (toX(a.x) - g.position.x) * Math.min(1, dt * 9);
-      g.position.z += (toZ(a.y) - g.position.z) * Math.min(1, dt * 9);
+      const ax = Number.isFinite(a.x) ? a.x : a.desk[0] + 0.95;
+      const ay = Number.isFinite(a.y) ? a.y : a.desk[1] + 1.5;
+      const dx = toX(ax) - g.position.x;
+      const dz = toZ(ay) - g.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.015) {
+        const step = Math.min(dist, dt * 2.6);
+        const nx = g.position.x + (dx / dist) * step;
+        const nz = g.position.z + (dz / dist) * step;
+        let moved = false;
+        if (!blocked(nx, g.position.z, a.id)) { g.position.x = nx; moved = true; }
+        if (!blocked(g.position.x, nz, a.id)) { g.position.z = nz; moved = true; }
+        if (!moved) {
+          // önü kapalı: yanlardan dolan (mobilyanın içine girmeden)
+          const side = g.userData.side || (a.id.length % 2 ? 1 : -1);
+          const sx = g.position.x + side * dt * 2.2;
+          if (!blocked(sx, g.position.z, a.id)) {
+            g.position.x = sx;
+            g.userData.side = side;
+          } else {
+            g.userData.side = -side;
+          }
+        }
+      }
 
       const working = a.status === "çalışıyor";
       const waiting = a.status === "bekliyor";
       const { mascot, ring, ringMat, halo } = g.userData;
+
+      // rigged GLB: durum → animasyon klibi (idle / yürüme / çalışma)
+      if (g.userData.mixer) {
+        const ud = g.userData;
+        const want = working ? (ud.work || ud.idle) : a.moving ? (ud.walk || ud.idle) : ud.idle;
+        if (want && ud.current !== want) {
+          if (ud.current) ud.current.fadeOut(0.22);
+          want.reset().fadeIn(0.22).play();
+          ud.current = want;
+        }
+        ud.mixer.update(dt);
+      }
 
       // nefes / yürüme salınımı
       g.position.y = a.moving ? Math.abs(Math.sin(now * 0.012)) * 0.06 : Math.sin(now * 0.002 + a.t) * 0.012;
@@ -1219,8 +1440,8 @@ export function createOffice3D(container, state) {
       }
 
       // hareket yönüne dönüş
-      const vx = toX(a.x) - g.position.x;
-      const vz = toZ(a.y) - g.position.z;
+      const vx = toX(ax) - g.position.x;
+      const vz = toZ(ay) - g.position.z;
       if (vx * vx + vz * vz > 0.00002) {
         let target = Math.atan2(vx, vz);
         let diff = ((target - g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
@@ -1266,6 +1487,27 @@ export function createOffice3D(container, state) {
       transferSprite.visible = false;
     }
 
+    if (mode === "walk") {
+      const k = walk.keys;
+      let fx = 0, fz = 0;
+      if (k.w || k.arrowup) { fx += -Math.sin(walk.yaw); fz += -Math.cos(walk.yaw); }
+      if (k.s || k.arrowdown) { fx += Math.sin(walk.yaw); fz += Math.cos(walk.yaw); }
+      if (k.a || k.arrowleft) { fx += -Math.cos(walk.yaw); fz += Math.sin(walk.yaw); }
+      if (k.d || k.arrowright) { fx += Math.cos(walk.yaw); fz += -Math.sin(walk.yaw); }
+      const len = Math.hypot(fx, fz);
+      if (len > 0.001) {
+        const speed = k.shift ? 4.2 : 2.4;
+        const nx = walk.pos.x + (fx / len) * speed * dt;
+        const nz = walk.pos.z + (fz / len) * speed * dt;
+        if (!blocked(nx, walk.pos.z)) walk.pos.x = nx;
+        if (!blocked(walk.pos.x, nz)) walk.pos.z = nz;
+        walk.pos.y = 1.62 + Math.sin(now * 0.011) * 0.018;
+      } else {
+        walk.pos.y = 1.62;
+      }
+      applyWalk();
+    }
+
     renderer.render(scene, camera);
   }
 
@@ -1282,10 +1524,36 @@ export function createOffice3D(container, state) {
   tick();
 
   return {
-    setActive(v) { active = Boolean(v); if (active) { clock.getDelta(); resize(); } },
+    setMode(m) { setMode(m); },
+    getMode() { return mode; },
+    step(seconds = 0.016) { frame(Math.max(0.001, Math.min(0.05, seconds))); },
+    debug() {
+      return {
+        mode,
+        frames,
+        lastDt: Number(lastDt.toFixed(4)),
+        active,
+        pos: walk.pos.toArray().map((n) => Number(n.toFixed(2))),
+        yaw: Number(walk.yaw.toFixed(2)),
+        models: Object.entries(avatars).map(([id, g]) => ({
+          id,
+          glb: !!g.userData.mixer || !!g.userData.clipNames,
+          clips: g.userData.clipNames || [],
+          size: g.userData.modelSize || null,
+          pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
+          time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
+        })),
+      };
+    },
+    setActive(v) {
+      active = Boolean(v);
+      if (!active && mode === "walk") setMode("orbit");
+      if (active) { clock.getDelta(); resize(); }
+    },
     setTheme: applyTheme,
     dispose() {
       cancelAnimationFrame(raf);
+      walkAbort.abort();
       ro.disconnect();
       scene.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
