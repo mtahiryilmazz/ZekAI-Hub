@@ -949,6 +949,52 @@ const ZONES = [
 
 const PIPELINE = ["Anla", "Planla", "Yürüt", "Doğrula", "Teslim"];
 
+/* Mobilya kutuları — ajanlar ve gezinme modu bu kutulara girmez. */
+const OBSTACLES = [];
+for (const a of AGENTS) {
+  OBSTACLES.push({ x: a.desk[0] + 0.95, y: a.desk[1] + 0.48, w: 1.95, h: 1.0, owner: a.id });
+}
+OBSTACLES.push({ x: 10.9 + 0.9, y: 11.2 + 0.4, w: 2.4, h: 1.2 });
+OBSTACLES.push({ x: 15.9 + 0.35, y: 8.0 + 0.25, w: 0.9, h: 0.7 });
+OBSTACLES.push({ x: 15.9 + 0.35, y: 9.2 + 0.25, w: 0.9, h: 0.7 });
+for (const [px, py] of [[0.9, 0.8], [17.2, 12.9], [8.4, 0.8]]) {
+  OBSTACLES.push({ x: px, y: py, w: 0.6, h: 0.6 });
+}
+
+function walkable(x, y, self) {
+  if (x < 0.45 || x > 17.55 || y < 0.35 || y > 13.65) return false;
+  for (const o of OBSTACLES) {
+    if (self && o.owner === self) continue; // kendi masasına oturabilsin
+    if (Math.abs(x - o.x) < o.w / 2 + 0.26 && Math.abs(y - o.y) < o.h / 2 + 0.26) return false;
+  }
+  return true;
+}
+
+function stepAgent(a, dt) {
+  const dx = a.tx - a.x, dy = a.ty - a.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= 0.02) { a.moving = false; return; }
+  const step = Math.min(dist, 3.1 * dt);
+  const nx = a.x + (dx / dist) * step;
+  const ny = a.y + (dy / dist) * step;
+  let moved = false;
+  if (Math.abs(nx - a.x) > step * 0.3 && walkable(nx, a.y, a.id)) { a.x = nx; moved = true; }
+  if (Math.abs(ny - a.y) > step * 0.3 && walkable(a.x, ny, a.id)) { a.y = ny; moved = true; }
+  if (!moved) {
+    // önü kapalı: mobilyanın içine girmeden yanlardan dolan
+    const t = performance.now();
+    if (!a.side) a.side = a.id.length % 2 ? 1 : -1;
+    let sx = a.x + a.side * step;
+    if (!walkable(sx, a.y, a.id)) {
+      a.side = -a.side;
+      sx = a.x + a.side * step;
+    }
+    if (walkable(sx, a.y, a.id)) a.x = sx;
+    a.sideAt = t;
+  }
+  a.moving = true;
+}
+
 /* Maskot kataloğu — özgün arketipler; kullanıcı kendi karakterini ekleyebilir. */
 const DEFAULT_CATALOG = [
   { id: "c_kedi",    name: "Kedi Usta",  species: "kedi",  accessory: "none",    color: "#E8B45A" },
@@ -3187,16 +3233,7 @@ function frame(now) {
     for (const id in state.agents) {
       const a = state.agents[id];
       a.t += dt;
-      const dx = a.tx - a.x, dy = a.ty - a.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > 0.02) {
-        const step = Math.min(dist, 3.1 * dt);
-        a.x += (dx / dist) * step;
-        a.y += (dy / dist) * step;
-        a.moving = true;
-      } else {
-        a.moving = false;
-      }
+      stepAgent(a, dt);
     }
   }
   if (currentView === "floor") draw(now);
@@ -3214,13 +3251,7 @@ function warmup(sec) {
     tickSim(step);
     for (const id in state.agents) {
       const a = state.agents[id];
-      const dx = a.tx - a.x, dy = a.ty - a.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > 0.02) {
-        const s = Math.min(dist, 3.1 * step);
-        a.x += (dx / dist) * s;
-        a.y += (dy / dist) * s;
-      }
+      stepAgent(a, step);
     }
     t += step;
     if (state.pendingApproval) break;

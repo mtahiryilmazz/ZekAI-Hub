@@ -1376,28 +1376,9 @@ export function createOffice3D(container, state) {
       if (!g) continue;
       const ax = Number.isFinite(a.x) ? a.x : a.desk[0] + 0.95;
       const ay = Number.isFinite(a.y) ? a.y : a.desk[1] + 1.5;
-      const dx = toX(ax) - g.position.x;
-      const dz = toZ(ay) - g.position.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist > 0.015) {
-        const step = Math.min(dist, dt * 2.6);
-        const nx = g.position.x + (dx / dist) * step;
-        const nz = g.position.z + (dz / dist) * step;
-        let moved = false;
-        if (!blocked(nx, g.position.z, a.id)) { g.position.x = nx; moved = true; }
-        if (!blocked(g.position.x, nz, a.id)) { g.position.z = nz; moved = true; }
-        if (!moved) {
-          // önü kapalı: yanlardan dolan (mobilyanın içine girmeden)
-          const side = g.userData.side || (a.id.length % 2 ? 1 : -1);
-          const sx = g.position.x + side * dt * 2.2;
-          if (!blocked(sx, g.position.z, a.id)) {
-            g.position.x = sx;
-            g.userData.side = side;
-          } else {
-            g.userData.side = -side;
-          }
-        }
-      }
+      // konum simülasyondan gelir; çarpışma tek yerde (index.html stepAgent) çözülür
+      g.position.x += (toX(ax) - g.position.x) * Math.min(1, dt * 9);
+      g.position.z += (toZ(ay) - g.position.z) * Math.min(1, dt * 9);
 
       const working = a.status === "çalışıyor";
       const waiting = a.status === "bekliyor";
