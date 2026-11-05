@@ -122,88 +122,151 @@ function floorTexture(isLight) {
 }
 
 /* ---------- mobilya ---------- */
-function makeDesk(x, y, color) {
+function makeDesk(x, y, color, boss = false) {
   const g = new THREE.Group();
   g.position.set(toX(x + 0.95), 0, toZ(y + 0.48));
 
-  const top = box(1.9, 0.08, 0.95, C.deskTop);
-  top.position.y = 0.62;
+  const W = boss ? 2.9 : 1.9;
+  const D = boss ? 1.35 : 0.95;
+  const topY = boss ? 0.68 : 0.62;
+  const wood = boss ? 0x5a3b26 : C.deskTop;
+  const edge = boss ? 0x241812 : 0x3c4c62;
+
+  if (boss) {
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 3.3), new THREE.MeshStandardMaterial({ color: 0x4a2b2b, roughness: 0.95 }));
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(0, 0.006, 0.4);
+    g.add(rug);
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(W + 0.04, 0.02, 0.05), standard(C.amber, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.4 }));
+    trim.position.set(0, topY + 0.015, D / 2 + 0.01);
+    g.add(trim);
+  }
+
+  const top = box(W, boss ? 0.1 : 0.08, D, wood);
+  top.position.y = topY;
   top.userData.role = "top";
   g.add(top);
 
-  const lip = box(1.9, 0.025, 0.03, 0x3c4c62);
-  lip.position.set(0, 0.655, 0.47);
+  const lip = box(W, 0.025, 0.03, edge);
+  lip.position.set(0, topY + 0.04, D / 2);
   g.add(lip);
 
-  for (const [lx, lz] of [[-0.85, -0.4], [0.85, -0.4], [-0.85, 0.4], [0.85, 0.4]]) {
-    const leg = box(0.07, 0.6, 0.07, C.deskLeg);
-    leg.position.set(lx, 0.3, lz);
-    leg.userData.role = "leg";
-    g.add(leg);
+  if (boss) {
+    // yönetici masası: yan paneller + arka panel (dolu gövde)
+    for (const s of [-1, 1]) {
+      const panel = box(0.1, 0.66, D - 0.18, 0x2b1e18);
+      panel.position.set(s * (W / 2 - 0.11), 0.33, 0);
+      panel.userData.role = "leg";
+      g.add(panel);
+    }
+    const modesty = box(W - 0.5, 0.52, 0.07, 0x2b1e18);
+    modesty.position.set(0, 0.36, -D / 2 + 0.12);
+    modesty.userData.role = "leg";
+    g.add(modesty);
+    // deri masaaltı
+    const mat = box(1.15, 0.015, 0.58, 0x1d2b33);
+    mat.position.set(0, topY + 0.06, 0.16);
+    g.add(mat);
+  } else {
+    for (const [lx, lz] of [[-0.85, -0.4], [0.85, -0.4], [-0.85, 0.4], [0.85, 0.4]]) {
+      const leg = box(0.07, 0.6, 0.07, C.deskLeg);
+      leg.position.set(lx, 0.3, lz);
+      leg.userData.role = "leg";
+      g.add(leg);
+    }
   }
 
-  const stand = box(0.07, 0.2, 0.07, C.metal);
-  stand.position.set(0, 0.76, -0.22);
-  g.add(stand);
-
-  const frame = box(0.66, 0.4, 0.05, 0x0c121b);
-  frame.position.set(0, 1.03, -0.22);
-  g.add(frame);
+  // isim plakası: çalışanlarda aynı tip, renk yalnız ince şeritte
+  const plateMat = standard(boss ? C.amber : 0x39485c, boss
+    ? { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.28, roughness: 0.5 }
+    : { roughness: 0.6 });
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(boss ? 0.66 : 0.34, 0.028, boss ? 0.16 : 0.1), plateMat);
+  plate.position.set(0, topY + 0.055, D / 2 - (boss ? 0.12 : 0.08));
+  g.add(plate);
+  if (!boss) {
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.012, 0.03),
+      standard(new THREE.Color(color).getHex(), { emissive: new THREE.Color(color), emissiveIntensity: 0.35 })
+    );
+    strip.position.set(0, topY + 0.045, D / 2 - 0.02);
+    g.add(strip);
+  }
 
   const screenMat = new THREE.MeshStandardMaterial({
     color: 0x0d1a22, emissive: new THREE.Color(C.screen), emissiveIntensity: 0.15, roughness: 0.4,
   });
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.32), screenMat);
-  screen.position.set(0, 1.03, -0.19);
-  g.add(screen);
 
-  const kb = box(0.55, 0.03, 0.18, 0x232d3c);
-  kb.position.set(0, 0.67, 0.16);
+  const screens = boss ? [-0.44, 0.44] : [0];
+  const sw = boss ? 0.66 : 0.58;
+  for (const sx of screens) {
+    const stand = box(0.07, 0.2, 0.07, C.metal);
+    stand.position.set(sx, topY + 0.13, -0.22);
+    g.add(stand);
+    const frame = box(sw + 0.08, 0.42, 0.05, 0x0c121b);
+    frame.position.set(sx, topY + 0.42, -0.22);
+    g.add(frame);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(sw, 0.34), screenMat);
+    screen.position.set(sx, topY + 0.42, -0.19);
+    g.add(screen);
+  }
+
+  const kb = box(boss ? 0.62 : 0.55, 0.03, 0.18, 0x232d3c);
+  kb.position.set(0, topY + 0.06, 0.16);
   g.add(kb);
 
   const cup = new THREE.Mesh(
     new THREE.CylinderGeometry(0.05, 0.04, 0.1, 12),
     standard(C.amber, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.25 })
   );
-  cup.position.set(0.62, 0.72, -0.05);
+  cup.position.set(boss ? 0.86 : 0.62, topY + 0.11, -0.05);
   g.add(cup);
 
-  // sandalye: taban + gövde + oturak + sırt
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.03, 20), standard(0x151c27));
-  base.position.set(0, 0.03, 0.78);
+  // sandalye
+  const chairZ = boss ? 1.14 : 0.78;
+  const chairScale = boss ? 1.18 : 1;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.24 * chairScale, 0.26 * chairScale, 0.03, 20), standard(0x151c27));
+  base.position.set(0, 0.03, chairZ);
   g.add(base);
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 10), standard(0x2a3547));
-  stem.position.set(0, 0.22, 0.78);
+  stem.position.set(0, 0.22, chairZ);
   g.add(stem);
-  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.24, 0.07, 20), standard(0x1b2431));
-  seat.position.set(0, 0.42, 0.78);
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * chairScale, 0.24 * chairScale, 0.07, 20), standard(boss ? 0x2a2118 : 0x1b2431));
+  seat.position.set(0, 0.42, chairZ);
   seat.userData.role = "chair";
   g.add(seat);
-  const back = box(0.44, 0.42, 0.055, 0x1b2431);
-  back.position.set(0, 0.66, 1.0);
+  const back = box(0.44 * chairScale, 0.46 * (boss ? 1.15 : 1), 0.055, boss ? 0x2a2118 : 0x1b2431);
+  back.position.set(0, 0.66 + (boss ? 0.05 : 0), chairZ + 0.22);
   back.rotation.x = -0.12;
   back.userData.role = "chair";
   g.add(back);
+  if (boss) {
+    for (const s of [-1, 1]) {
+      const arm = box(0.07, 0.05, 0.42, 0x2a2118);
+      arm.position.set(s * 0.32, 0.56, chairZ + 0.04);
+      g.add(arm);
+    }
+  }
 
-  // masa lambası
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.03, 16), standard(0x222c3a));
-  lampBase.position.set(-0.72, 0.675, -0.25);
+  // masa lambası (yöneticide pirinç, çalışanda gri)
+  const lampX = boss ? -1.15 : -0.72;
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.03, 16), standard(boss ? 0x6b5324 : 0x222c3a));
+  lampBase.position.set(lampX, topY + 0.06, -0.25);
   g.add(lampBase);
-  const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 8), standard(0x2e3a4c));
-  lampArm.position.set(-0.72, 0.85, -0.25);
+  const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 8), standard(boss ? 0x8a6a2c : 0x2e3a4c));
+  lampArm.position.set(lampX, topY + 0.24, -0.25);
   lampArm.rotation.z = 0.18;
   g.add(lampArm);
   const lampHead = new THREE.Mesh(
     new THREE.ConeGeometry(0.11, 0.13, 16, 1, true),
-    standard(0x2e3a4c, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.25, side: THREE.DoubleSide })
+    standard(boss ? 0x8a6a2c : 0x2e3a4c, { emissive: new THREE.Color(C.amber), emissiveIntensity: 0.25, side: THREE.DoubleSide })
   );
-  lampHead.position.set(-0.68, 1.02, -0.25);
+  lampHead.position.set(lampX + 0.04, topY + 0.41, -0.25);
   lampHead.rotation.z = -0.25;
   g.add(lampHead);
 
   // evrak
-  const paper = box(0.3, 0.012, 0.22, 0xd9d3c4);
-  paper.position.set(0.36, 0.665, 0.26);
+  const paper = box(boss ? 0.36 : 0.3, 0.012, 0.24, 0xd9d3c4);
+  paper.position.set(boss ? 0.95 : 0.36, topY + 0.05, boss ? 0.22 : 0.26);
   paper.rotation.y = 0.18;
   paper.userData.role = "paper";
   g.add(paper);
@@ -1266,7 +1329,7 @@ export function createOffice3D(container, state) {
   scene.add(minute);
 
   for (const a of Object.values(state.agents)) {
-    const desk = makeDesk(a.desk[0], a.desk[1], a.color);
+    const desk = makeDesk(a.desk[0], a.desk[1], a.color, !!a.boss);
     scene.add(desk);
     a.__screen = desk.userData.screenMat;
   }
@@ -1356,7 +1419,7 @@ export function createOffice3D(container, state) {
 
   const obstacles = [];
   for (const a of Object.values(state.agents)) {
-    obstacles.push({ x: toX(a.desk[0] + 0.95), z: toZ(a.desk[1] + 0.48), w: 1.95, d: 1.0, agentId: a.id });
+    obstacles.push({ x: toX(a.desk[0] + 0.95), z: toZ(a.desk[1] + 0.48), w: a.boss ? 2.95 : 1.95, d: a.boss ? 1.4 : 1.0, agentId: a.id });
   }
   obstacles.push({ x: toX(10.9 + 0.9), z: toZ(11.2 + 0.4), w: 2.4, d: 1.2 });
   obstacles.push({ x: toX(15.9 + 0.35), z: toZ(8.0 + 0.25), w: 0.9, d: 0.7 });
@@ -1522,7 +1585,7 @@ export function createOffice3D(container, state) {
       const g = avatars[a.id];
       if (!g) continue;
       const ax = Number.isFinite(a.x) ? a.x : a.desk[0] + 0.95;
-      const ay = Number.isFinite(a.y) ? a.y : a.desk[1] + 1.5;
+      const ay = Number.isFinite(a.y) ? a.y : a.desk[1] + (a.boss ? 1.62 : 1.5);
       // konum simülasyondan gelir; çarpışma tek yerde (index.html stepAgent) çözülür
       g.position.x += (toX(ax) - g.position.x) * Math.min(1, dt * 9);
       g.position.z += (toZ(ay) - g.position.z) * Math.min(1, dt * 9);
