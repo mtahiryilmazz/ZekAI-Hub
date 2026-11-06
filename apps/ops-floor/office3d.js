@@ -484,7 +484,8 @@ function buildFurry(cfg, m, species, accessory) {
   const fur = cfg.body ? standard(cfg.body, { roughness: 0.62 }) : m.base;
   const dark = standard(cfg.dark || 0x232a33, { roughness: 0.6 });
 
-  const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.4, 20, 32), fur);
+  const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.4, 24, 40), fur);
+  b.userData.outline = 1.04;
   b.position.y = 0.44;
   b.rotation.x = Math.PI / 16;
   b.castShadow = true;
@@ -500,7 +501,8 @@ function buildFurry(cfg, m, species, accessory) {
   body.add(head);
   parts.head = head;
 
-  const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), fur);
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 48), fur);
+  h.userData.outline = 1.035;
   h.scale.set(1.14, 1, 1.03);
   h.castShadow = true;
   head.add(h);
@@ -653,6 +655,17 @@ function buildFurry(cfg, m, species, accessory) {
   return { root, parts, mats: m };
 }
 
+/* Silüet okunurluğu: ters yüz kabuk (outline). Uzaktan bakınca şekil netleşir. */
+const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x0a1018, side: THREE.BackSide });
+function addOutline(mesh, scale) {
+  const shell = new THREE.Mesh(mesh.geometry, OUTLINE_MAT);
+  shell.scale.setScalar(scale);
+  shell.castShadow = false;
+  shell.receiveShadow = false;
+  mesh.add(shell);
+  return shell;
+}
+
 function makeMascot(species, hex, accessory = "none") {
   const m = mascotMats(hex);
   const root = new THREE.Group();
@@ -664,7 +677,7 @@ function makeMascot(species, hex, accessory = "none") {
   if (FUR_SPECIES[species]) return buildFurry(FUR_SPECIES[species], m, species, accessory);
 
   if (species === "kus") {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.46, 48, 48), m.base);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.46, 64, 48), m.base);
     b.scale.set(1, 0.95, 1.05);
     b.position.y = 0.42;
     b.castShadow = true;
@@ -680,7 +693,7 @@ function makeMascot(species, hex, accessory = "none") {
     body.add(head);
     parts.head = head;
 
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.48, 48, 48), m.base);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.48, 64, 48), m.base);
     h.scale.set(1.05, 1, 1);
     h.castShadow = true;
     head.add(h);
@@ -722,7 +735,7 @@ function makeMascot(species, hex, accessory = "none") {
       parts.limbs.push(foot);
     }
   } else if (species === "kopek") {
-    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.42, 20, 32), m.base);
+    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.42, 24, 40), m.base);
     b.position.y = 0.44;
     b.castShadow = true;
     body.add(b);
@@ -737,7 +750,7 @@ function makeMascot(species, hex, accessory = "none") {
     body.add(head);
     parts.head = head;
 
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), m.base);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 48), m.base);
     h.scale.set(1.08, 1, 1.02);
     h.castShadow = true;
     head.add(h);
@@ -786,7 +799,7 @@ function makeMascot(species, hex, accessory = "none") {
     tail.add(t);
   } else {
     // kedi (varsayılan)
-    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.4, 20, 32), m.base);
+    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.4, 24, 40), m.base);
     b.position.y = 0.42;
     b.rotation.x = Math.PI / 14;
     b.castShadow = true;
@@ -802,7 +815,7 @@ function makeMascot(species, hex, accessory = "none") {
     body.add(head);
     parts.head = head;
 
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), m.base);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 48), m.base);
     h.scale.set(1.12, 1, 1.04);
     h.castShadow = true;
     head.add(h);
@@ -853,6 +866,21 @@ function makeMascot(species, hex, accessory = "none") {
 
   root.scale.setScalar(0.78);
   addAccessory(parts.head, m, accessory);
+  // silüet kabuğu: en büyük 3 gövde parçası (kafa/gövde/kulak) — okunurluk
+  let tris = 0;
+  const big = [];
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const g = o.geometry;
+    tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
+    if (!g.boundingSphere) g.computeBoundingSphere();
+    big.push({ o, r: g.boundingSphere ? g.boundingSphere.radius : 0 });
+  });
+  big.sort((a, b) => b.r - a.r);
+  let outlines = 0;
+  for (const it of big.slice(0, 3)) { addOutline(it.o, 1.03); outlines++; }
+  root.userData.stats = { outlines, tris: Math.round(tris) };
+
   return { root, parts, mats: m };
 }
 
@@ -1459,7 +1487,7 @@ export function createOffice3D(container, state) {
   let active = true;
 
   /* ---------- kamera ---------- */
-  let theta = 0.66, phi = 0.95, radius = 16.5;
+  let theta = 0.66, phi = 0.95, radius = 14.2;
   const target = new THREE.Vector3(0, 0.9, 0);
   const apply = () => {
     const sp = Math.sin(phi), cp = Math.cos(phi);
@@ -1619,7 +1647,7 @@ export function createOffice3D(container, state) {
     radius = Math.max(12, Math.min(40, radius + e.deltaY * 0.02));
     apply();
   }, { passive: false });
-  el.addEventListener("dblclick", () => { if (mode === "walk") return; theta = 0.66; phi = 0.95; radius = 16.5; apply(); });
+  el.addEventListener("dblclick", () => { if (mode === "walk") return; theta = 0.66; phi = 0.95; radius = 14.2; apply(); });
 
   /* ---------- döngü ---------- */
   let raf = 0;
@@ -1809,6 +1837,7 @@ export function createOffice3D(container, state) {
           pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
           tone: g.userData.folderSprite ? (g.userData.folderSprite.userData.tone || "gold") : null,
           poseFixed: g.userData.poseFixed || 0,
+          stats: (g.userData.mascot && g.userData.mascot.root.userData.stats) || null,
           tex: g.userData.folderSprite && g.userData.folderSprite.material.map ? g.userData.folderSprite.material.map.uuid.slice(0, 6) : null,
           time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
         })),
