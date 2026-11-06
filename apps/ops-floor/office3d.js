@@ -1310,7 +1310,7 @@ export function createOffice3D(container, state, opts = {}) {
   scene.add(fill);
 
   // rim: karakterlerin arka kenarını ayırır (okunurluk)
-  const rim = new THREE.DirectionalLight(0x8fc7ff, quality === "high" ? 1.1 : 0.35);
+  const rim = new THREE.DirectionalLight(0x8fc7ff, quality === "high" ? 1.8 : 0.35);
   rim.position.set(-7, 5, -9);
   scene.add(rim);
 
@@ -1494,7 +1494,7 @@ export function createOffice3D(container, state, opts = {}) {
   let active = true;
 
   /* ---------- kamera ---------- */
-  let theta = 0.66, phi = 0.95, radius = 14.2;
+  let theta = 0.66, phi = 0.95, radius = 13.2;
   const target = new THREE.Vector3(0, 0.9, 0);
   const apply = () => {
     const sp = Math.sin(phi), cp = Math.cos(phi);
@@ -1654,7 +1654,7 @@ export function createOffice3D(container, state, opts = {}) {
     radius = Math.max(12, Math.min(40, radius + e.deltaY * 0.02));
     apply();
   }, { passive: false });
-  el.addEventListener("dblclick", () => { if (mode === "walk") return; theta = 0.66; phi = 0.95; radius = 14.2; apply(); });
+  el.addEventListener("dblclick", () => { if (mode === "walk") return; theta = 0.66; phi = 0.95; radius = 13.2; apply(); });
 
   /* ---------- döngü ---------- */
   let raf = 0;
@@ -1824,7 +1824,7 @@ export function createOffice3D(container, state, opts = {}) {
     const high = quality === "high";
     renderer.shadowMap.enabled = high && !lowPower;
     renderer.setPixelRatio(high ? Math.min(1.75, window.devicePixelRatio || 1) : Math.min(1.15, window.devicePixelRatio || 1));
-    rim.intensity = high ? 1.1 : 0.35;
+    rim.intensity = high ? 1.8 : 0.35;
     scene.traverse((o) => {
       if (o.userData && o.userData.isOutline) o.visible = high;
       if (o.isMesh && o.castShadow === true) o.castShadow = high && !lowPower;

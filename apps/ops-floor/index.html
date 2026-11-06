@@ -1535,35 +1535,74 @@ function drawAgent(c, a, now) {
   c.lineWidth = 1.4;
   c.stroke();
 
-  const bodyH = 22 * s, bodyW = 17 * s;
-  const headR = 7.2 * s;
-  const topY = sy - bodyH - headR * 1.2 + bob;
+  const hi = (window.__zkQuality || "high") === "high";
+  const bodyH = 20 * s, bodyW = 15 * s, headR = 8.2 * s;
+  const headY = sy - bodyH - headR * 0.62 + bob;
+  const topY = headY - headR * 0.9;
+  const dark = "rgba(8,12,18,0.92)";
 
-  // gövde
-  const grad = c.createLinearGradient(sx, topY, sx, sy);
-  grad.addColorStop(0, a.color);
-  grad.addColorStop(1, hexA(a.color, 0.62));
-  rrect(c, sx - bodyW / 2, topY, bodyW, bodyH + headR * 0.6, 5 * s);
-  c.fillStyle = grad;
-  c.fill();
-  c.strokeStyle = "rgba(0,0,0,0.35)";
-  c.lineWidth = 0.8;
-  c.stroke();
+  // kulaklar (tür)
+  const sp = (a.species || "kedi");
+  const earH = sp === "kus" ? 4 * s : 6.4 * s;
+  const earW = sp === "kus" ? 3 * s : 5.4 * s;
+  c.lineJoin = "round";
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    const ex = sx + side * headR * 0.62;
+    c.moveTo(ex - earW / 2, headY - headR * 0.45);
+    c.lineTo(ex, headY - headR - earH);
+    c.lineTo(ex + earW / 2, headY - headR * 0.45);
+    c.closePath();
+    c.strokeStyle = dark; c.lineWidth = 2.6 * s; c.stroke();
+    c.fillStyle = a.color; c.fill();
+  }
 
-  // baş
+  // gövde + kafa silüeti: önce koyu kontur, sonra dolgu
+  const bodyPath = () => {
+    rrect(c, sx - bodyW / 2, headY + headR * 0.45, bodyW, bodyH + headR * 0.5, 6 * s);
+  };
+  c.beginPath(); bodyPath(); c.strokeStyle = dark; c.lineWidth = 3 * s; c.stroke();
+  c.beginPath(); c.arc(sx, headY, headR, 0, Math.PI * 2); c.strokeStyle = dark; c.lineWidth = 3 * s; c.stroke();
+
+  const grad = c.createLinearGradient(sx, headY, sx, sy);
+  grad.addColorStop(0, hexA(a.color, 1));
+  grad.addColorStop(1, hexA(a.color, 0.55));
+  c.beginPath(); bodyPath(); c.fillStyle = grad; c.fill();
+
+  // karın/önlük
   c.beginPath();
-  c.arc(sx, topY - headR * 0.55, headR, 0, Math.PI * 2);
-  c.fillStyle = "#F0E3CF";
+  c.ellipse(sx, sy - bodyH * 0.34, bodyW * 0.3, bodyH * 0.42, 0, 0, Math.PI * 2);
+  c.fillStyle = "rgba(246,239,226,0.92)";
   c.fill();
-  c.strokeStyle = "rgba(0,0,0,0.25)";
-  c.stroke();
 
-  // baş üstü vurgu (denetçi tacı gibi ince detay)
+  const headGrad = c.createRadialGradient(sx - headR * 0.3, headY - headR * 0.35, 1, sx, headY, headR * 1.25);
+  headGrad.addColorStop(0, hi ? "#FFF7E8" : "#F0E3CF");
+  headGrad.addColorStop(1, hexA(a.color, 0.95));
+  c.beginPath(); c.arc(sx, headY, headR, 0, Math.PI * 2); c.fillStyle = headGrad; c.fill();
+
+  // yüz
+  c.beginPath(); c.ellipse(sx, headY + headR * 0.34, headR * 0.42, headR * 0.28, 0, 0, Math.PI * 2);
+  c.fillStyle = "rgba(255,250,240,0.95)"; c.fill();
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.ellipse(sx + side * headR * 0.34, headY - headR * 0.06, headR * 0.17, headR * 0.22, 0, 0, Math.PI * 2);
+    c.fillStyle = "#1B2431"; c.fill();
+    if (hi) {
+      c.beginPath();
+      c.arc(sx + side * headR * 0.34 - headR * 0.05, headY - headR * 0.14, headR * 0.055, 0, Math.PI * 2);
+      c.fillStyle = "rgba(255,255,255,0.95)"; c.fill();
+    }
+  }
   c.beginPath();
-  c.arc(sx, topY - headR * 0.55, headR, Math.PI * 1.15, Math.PI * 1.85);
-  c.strokeStyle = a.color;
-  c.lineWidth = 2 * s;
-  c.stroke();
+  c.ellipse(sx, headY + headR * 0.3, headR * 0.1, headR * 0.08, 0, 0, Math.PI * 2);
+  c.fillStyle = "#C9707E"; c.fill();
+
+  // rim (yalnız yüksek kalite)
+  if (hi) {
+    c.beginPath();
+    c.arc(sx, headY, headR - 1, Math.PI * 1.1, Math.PI * 1.75);
+    c.strokeStyle = "rgba(255,240,205,0.55)"; c.lineWidth = 1.6 * s; c.stroke();
+  }
 
   // isim
   c.font = `500 ${Math.round(9.5)}px ui-sans-serif,"Segoe UI",sans-serif`;
@@ -3456,6 +3495,7 @@ function updateQualityLabel() {
   const eff = qualityNow() === "high" ? "yüksek" : "düşük";
   b.textContent = "Kalite: " + (qualityMode === "auto" ? "Oto (" + eff + ")" : qualityMode === "high" ? "Yüksek" : "Düşük");
   b.classList.toggle("on", qualityMode !== "auto");
+  window.__zkQuality = qualityNow();
 }
 document.getElementById("btnQuality").addEventListener("click", () => {
   qualityMode = qualityMode === "auto" ? "high" : qualityMode === "high" ? "low" : "auto";
