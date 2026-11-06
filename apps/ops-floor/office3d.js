@@ -659,6 +659,7 @@ function buildFurry(cfg, m, species, accessory) {
 const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x0a1018, side: THREE.BackSide });
 function addOutline(mesh, scale) {
   const shell = new THREE.Mesh(mesh.geometry, OUTLINE_MAT);
+  shell.userData.isOutline = true;
   shell.scale.setScalar(scale);
   shell.castShadow = false;
   shell.receiveShadow = false;
@@ -1243,7 +1244,8 @@ export function createMascotPreview(container, char = {}, hooks = {}) {
 }
 
 /* ---------- sahne ---------- */
-export function createOffice3D(container, state) {
+export function createOffice3D(container, state, opts = {}) {
+  let quality = opts.quality === "low" ? "low" : "high";
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x070a10);
   scene.fog = new THREE.Fog(0x070a10, 32, 70);
@@ -1253,7 +1255,7 @@ export function createOffice3D(container, state) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
   renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
-  renderer.shadowMap.enabled = !lowPower;
+  renderer.shadowMap.enabled = quality === "high" && !lowPower;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -1306,6 +1308,11 @@ export function createOffice3D(container, state) {
   const fill = new THREE.DirectionalLight(0x89a8d6, 0.35);
   fill.position.set(-9, 6, -7);
   scene.add(fill);
+
+  // rim: karakterlerin arka kenarını ayırır (okunurluk)
+  const rim = new THREE.DirectionalLight(0x8fc7ff, quality === "high" ? 1.1 : 0.35);
+  rim.position.set(-7, 5, -9);
+  scene.add(rim);
 
   const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture(false), color: 0xffffff, roughness: 0.95, metalness: 0 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, H), floorMat);
@@ -1812,6 +1819,20 @@ export function createOffice3D(container, state) {
   }
   const ro = new ResizeObserver(resize);
   ro.observe(container);
+  function applyQuality(next) {
+    if (next) quality = next === "low" ? "low" : "high";
+    const high = quality === "high";
+    renderer.shadowMap.enabled = high && !lowPower;
+    renderer.setPixelRatio(high ? Math.min(1.75, window.devicePixelRatio || 1) : Math.min(1.15, window.devicePixelRatio || 1));
+    rim.intensity = high ? 1.1 : 0.35;
+    scene.traverse((o) => {
+      if (o.userData && o.userData.isOutline) o.visible = high;
+      if (o.isMesh && o.castShadow === true) o.castShadow = high && !lowPower;
+    });
+    resize();
+  }
+
+  applyQuality(quality);
   resize();
   tick();
 
@@ -1820,8 +1841,13 @@ export function createOffice3D(container, state) {
     getMode() { return mode; },
     step(seconds = 0.016) { frame(Math.max(0.001, Math.min(0.05, seconds))); },
     debug() {
+      let outlinesVisible = 0;
+      scene.traverse((o) => { if (o.userData && o.userData.isOutline && o.visible) outlinesVisible++; });
       return {
         mode,
+        quality,
+        outlinesVisible,
+        shadows: renderer.shadowMap.enabled,
         frames,
         lastDt: Number(lastDt.toFixed(4)),
         active,
@@ -1849,6 +1875,7 @@ export function createOffice3D(container, state) {
       if (active) { clock.getDelta(); resize(); }
     },
     setTheme: applyTheme,
+    setQuality(q) { applyQuality(q); },
     dispose() {
       cancelAnimationFrame(raf);
       walkAbort.abort();

@@ -532,6 +532,7 @@
       <div class="metric"><label>Token</label><b id="tokens">0</b></div>
       <div class="metric"><label>Aktif model</label><b id="model">T2 · Sonnet 5.5</b></div>
       <div class="mode" id="mode"><span class="dot"></span><span id="modeText">Simülasyon</span></div>
+      <button class="ctl" id="btnQuality" title="Kalite profili">Kalite: Oto</button>
       <button class="iconbtn" id="btnTheme" title="Tema (T)" aria-label="Tema değiştir">
         <svg class="ico ico-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         <svg class="ico ico-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6.5 6.5 0 0 0 8.268 8.268c.344-.215.825-.003.803.401"/></svg>
@@ -771,7 +772,10 @@
               style="width:76px;background:#111926;border:1px solid var(--line-strong);border-radius:6px;color:var(--text);padding:5px 7px;font:11px var(--mono)" />
             <span style="font-family:var(--mono)">× · 1 = masa boyu</span>
           </label>
-          <button class="btn primary wide" id="nAdd">Kataloğa ekle</button>
+          <div class="wide" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <button class="btn primary" id="nAdd">Yeni ekle</button>
+            <button class="btn" id="nUpdate" disabled>Seçileni güncelle</button>
+          </div>
         </div>
       </section>
     </div>
@@ -2142,7 +2146,7 @@ async function ensureOffice() {
     const mod = await import("./office3d.js" + (officeBust ? "?r=" + officeBust : ""));
     if (gen !== officeToken || currentView !== "office") { clearTimeout(timer); return; }
     officeEl.innerHTML = "";
-    office = mod.createOffice3D(officeEl, state);
+    office = mod.createOffice3D(officeEl, state, { quality: qualityNow() });
     office.setActive(true);
     officeAutoRetry = 0;
     clearTimeout(timer);
@@ -2407,7 +2411,8 @@ function renderMascotPanel() {
       state.catalog = state.catalog.filter((x) => x.id !== c.id);
       if (editingId === c.id) {
         editingId = null;
-        document.getElementById("nAdd").textContent = "Kataloğa ekle";
+        const upd = document.getElementById("nUpdate");
+        if (upd) { upd.disabled = true; upd.textContent = "Seçileni güncelle"; }
         document.getElementById("nName").value = "";
         document.getElementById("nModel").value = "";
       }
@@ -2559,7 +2564,8 @@ function selectCharacter(c) {
   document.getElementById("nModel").value = c.model || "";
   document.getElementById("nModelPick").value = c.model || "";
   document.getElementById("nScale").value = c.scale || 1;
-  document.getElementById("nAdd").textContent = "Güncelle";
+  const upd = document.getElementById("nUpdate");
+  if (upd) { upd.disabled = false; upd.textContent = "Güncelle: " + c.name; }
   renderSwatches();
   refreshPreview();
 }
@@ -3434,6 +3440,31 @@ document.getElementById("officeModes").addEventListener("click", (e) => {
   if (!b || !office || !office.setMode) return;
   office.setMode(b.dataset.mode);
 });
+/* ---------- kalite profili ---------- */
+let qualityMode = localStorage.getItem("zk_quality") || "auto";
+
+function lowHardware() {
+  return (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+}
+function qualityNow() {
+  if (qualityMode === "auto") return lowHardware() ? "low" : "high";
+  return qualityMode;
+}
+function updateQualityLabel() {
+  const b = document.getElementById("btnQuality");
+  if (!b) return;
+  const eff = qualityNow() === "high" ? "yüksek" : "düşük";
+  b.textContent = "Kalite: " + (qualityMode === "auto" ? "Oto (" + eff + ")" : qualityMode === "high" ? "Yüksek" : "Düşük");
+  b.classList.toggle("on", qualityMode !== "auto");
+}
+document.getElementById("btnQuality").addEventListener("click", () => {
+  qualityMode = qualityMode === "auto" ? "high" : qualityMode === "high" ? "low" : "auto";
+  localStorage.setItem("zk_quality", qualityMode);
+  updateQualityLabel();
+  if (office && office.setQuality) office.setQuality(qualityNow());
+});
+updateQualityLabel();
+
 window.addEventListener("zk-office-mode", (e) => {
   const m = (e.detail && e.detail.mode) || "orbit";
   document.querySelectorAll("#officeModes [data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
@@ -3482,33 +3513,56 @@ document.getElementById("nModelPick").addEventListener("change", (e) => {
     refreshPreview();
   }
 });
-document.getElementById("nAdd").addEventListener("click", () => {
-  const name = (document.getElementById("nName").value || "").trim();
-  if (!name) return;
-  const payload = {
-    name,
+function readCharForm() {
+  const scale = Math.max(0.5, Math.min(2.6, Number(document.getElementById("nScale").value || 1) || 1));
+  return {
+    name: (document.getElementById("nName").value || "").trim(),
     species: document.getElementById("nSpecies").value,
     accessory: document.getElementById("nAcc").value,
     color: document.getElementById("nColor").value,
     model: (document.getElementById("nModel").value || "").trim(),
-    scale: Math.max(0.5, Math.min(2.6, Number(document.getElementById("nScale").value || 1) || 1)),
+    scale,
   };
-  if (editingId) {
-    const c = state.catalog.find((x) => x.id === editingId);
-    if (c) Object.assign(c, payload);
-    editingId = null;
-    document.getElementById("nAdd").textContent = "Kataloğa ekle";
-  } else {
-    state.catalog.push({ id: "c_" + Math.random().toString(36).slice(2, 7), ...payload });
-  }
+}
+
+function clearCharForm() {
   document.getElementById("nName").value = "";
   document.getElementById("nModel").value = "";
   document.getElementById("nScale").value = 1;
+  editingId = null;
+  const upd = document.getElementById("nUpdate");
+  if (upd) { upd.disabled = true; upd.textContent = "Seçileni güncelle"; }
   syncModelMode();
+}
+
+/* Yeni karakter: seçim ne olursa olsun her zaman kataloğa EKLER. */
+document.getElementById("nAdd").addEventListener("click", () => {
+  const payload = readCharForm();
+  if (!payload.name) { toast("Karakter adı gerekli"); return; }
+  state.catalog.push({ id: "c_" + Math.random().toString(36).slice(2, 7), ...payload });
+  clearCharForm();
   saveCast();
   renderMascotPanel();
   applyCast();
+  refreshPreview();
+  toast("Eklendi: " + payload.name);
 });
+
+/* Güncelleme: yalnız seçili karakteri değiştirir. */
+document.getElementById("nUpdate").addEventListener("click", () => {
+  if (!editingId) { toast("Önce bir karakter seç"); return; }
+  const payload = readCharForm();
+  if (!payload.name) { toast("Karakter adı gerekli"); return; }
+  const c = state.catalog.find((x) => x.id === editingId);
+  if (!c) { editingId = null; toast("Seçili karakter bulunamadı"); return; }
+  Object.assign(c, payload);
+  saveCast();
+  renderMascotPanel();
+  applyCast();
+  refreshPreview();
+  toast("Güncellendi: " + payload.name);
+});
+
 document.getElementById("mascotModal").addEventListener("click", (e) => {
   if (e.target.id === "mascotModal") openMascot(false);
 });
