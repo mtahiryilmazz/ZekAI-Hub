@@ -1021,22 +1021,23 @@ function makeAgent(a) {
           const clips = gltf.animations || [];
           if (clips.length) {
             const mixer = new THREE.AnimationMixer(obj);
-            const actions = clips.map((c) => {
-              const act = mixer.clipAction(c);
+            const byName = (re) => clips.find((c) => re.test(c.name)) || null;
+            const mk = (clip, name) => {
+              if (!clip) return null;
+              const act = mixer.clipAction(clip);
               act.setLoop(THREE.LoopRepeat, Infinity);
-              return { name: c.name, action: act };
-            });
-            const pick = (re) => actions.find((x) => re.test(x.name)) || null;
-            const idle = (pick(/idle|breath|stand|loop|float|hover/i) || actions[0]).action;
-            const walking = pick(/walk|run|move|drift|fly|swim/i);
-            const work = pick(/work|type|typing|sit|read|code|dance/i);
+              act.enabled = true;
+              act.setEffectiveWeight(0);
+              act.play();
+              return act;
+            };
+            const idleClip = byName(/idle|breath|stand|loop|float|hover/i) || clips[0];
             g.userData.mixer = mixer;
-            g.userData.clipNames = actions.map((x) => x.name);
-            g.userData.idle = idle;
-            g.userData.walk = walking ? walking.action : null;
-            g.userData.work = work ? work.action : null;
-            g.userData.current = idle;
-            idle.play();
+            g.userData.clipNames = clips.map((c) => c.name);
+            g.userData.idle = mk(idleClip);
+            g.userData.walk = mk(byName(/walk|run|move|drift|fly|swim/i));
+            g.userData.work = mk(byName(/work|type|typing|sit|read|code|dance/i));
+            if (g.userData.idle) g.userData.idle.setEffectiveWeight(1);
             window.dispatchEvent(new CustomEvent("zk-model-ready", { detail: { agent: a.name, clips: clips.length } }));
           } else {
             // klip yok: T-pose yumuşat + hafif canlılık
@@ -1689,11 +1690,16 @@ export function createOffice3D(container, state, opts = {}) {
       // rigged GLB: durum → animasyon klibi (idle / yürüme / çalışma)
       if (g.userData.mixer) {
         const ud = g.userData;
-        const want = working ? (ud.work || ud.idle) : a.moving ? (ud.walk || ud.idle) : ud.idle;
-        if (want && ud.current !== want) {
-          if (ud.current) ud.current.fadeOut(0.22);
-          want.reset().fadeIn(0.22).play();
-          ud.current = want;
+        // yumuşak harmanlama: idle / walk / work ağırlıkları hedefe doğru süzülür
+        const target = { idle: 1, walk: 0, work: 0 };
+        if (working && ud.work) { target.work = 1; target.idle = 0; }
+        else if (a.moving && ud.walk) { target.walk = 1; target.idle = 0; }
+        const k = Math.min(1, dt * 7);
+        for (const key of ["idle", "walk", "work"]) {
+          const act = ud[key];
+          if (!act) continue;
+          const cur = act.getEffectiveWeight();
+          act.setEffectiveWeight(cur + (target[key] - cur) * k);
         }
         ud.mixer.update(dt);
       } else if (g.userData.idleSway) {
@@ -1863,6 +1869,7 @@ export function createOffice3D(container, state, opts = {}) {
           pos: [Number(g.position.x.toFixed(2)), Number(g.position.z.toFixed(2))],
           tone: g.userData.folderSprite ? (g.userData.folderSprite.userData.tone || "gold") : null,
           poseFixed: g.userData.poseFixed || 0,
+          weights: g.userData.mixer ? { i: Number((g.userData.idle ? g.userData.idle.getEffectiveWeight() : 0).toFixed(2)), w: Number((g.userData.walk ? g.userData.walk.getEffectiveWeight() : 0).toFixed(2)), k: Number((g.userData.work ? g.userData.work.getEffectiveWeight() : 0).toFixed(2)) } : null,
           stats: (g.userData.mascot && g.userData.mascot.root.userData.stats) || null,
           tex: g.userData.folderSprite && g.userData.folderSprite.material.map ? g.userData.folderSprite.material.map.uuid.slice(0, 6) : null,
           time: g.userData.mixer ? Number(g.userData.mixer.time.toFixed(2)) : null,
