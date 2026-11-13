@@ -3350,6 +3350,7 @@ async function sendPrompt(raw) {
   state.agents.supervisor.status = "çalışıyor";
   await sleep(560);
   emit("plan.ready", "supervisor", "İş planı hazır · onay bekliyor");
+  setPipeline(1);
   state.agents.supervisor.status = "boşta";
   updateTask(task.id, { status: "plan" });
   appendPlanCard(proposal, task);
@@ -3368,6 +3369,7 @@ async function approveTask(taskId) {
   busyTaskId = task.id;
   updateTask(task.id, { status: "running", done: [] });
   appendMsg("route", "Plan onaylandı · üretim sırayla başlıyor");
+  setPipeline(2);
   emit("plan.approved", "supervisor", "Plan onaylandı · üretim başlıyor", { severity: "ok", status: "çalışıyor" });
   const startedAt = performance.now();
   const btn = document.getElementById("btnSend");
@@ -3375,6 +3377,7 @@ async function approveTask(taskId) {
   for (let i = 0; i < task.plan.length; i++) {
     const st = task.plan[i];
     const ag = state.agents[st.agent];
+    if (st.agent === "reviewer") setPipeline(3);
     emit("agent.started", st.agent, (i + 1) + "/" + task.plan.length + " · " + st.task, { status: "çalışıyor" });
     updateTask(task.id, { step: i });
     await sleep(Math.max(2, st.eta || 6) * 1000);
@@ -3407,6 +3410,7 @@ async function approveTask(taskId) {
       cost: d.cost_usd || 0, tokens: (d.usage && d.usage.out) || 0, severity: "ok",
     });
     emit("task.completed", producer.agent, "Çıktı teslim edildi", { severity: "ok" });
+    setPipeline("done");
     updateTask(task.id, {
       status: "ok",
       result: d.text || "",
@@ -3429,6 +3433,8 @@ function rejectTask(taskId) {
   if (!task || task.status !== "plan") return;
   updateTask(task.id, { status: "rejected", result: "Kullanıcı planı reddetti · üretim yapılmadı." });
   emit("task.rejected", "supervisor", "Plan reddedildi · üretim yapılmadı", { severity: "err" });
+  state.pipeline = ["idle", "idle", "idle", "idle", "idle"];
+  renderPipeline();
   appendMsg("err", "Plan reddedildi. Hiçbir üretim başlatılmadı.");
 }
 
