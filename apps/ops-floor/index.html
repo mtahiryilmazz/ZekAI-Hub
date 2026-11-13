@@ -90,8 +90,6 @@
     background:radial-gradient(120% 100% at 50% 45%,transparent 55%,rgba(0,0,0,.55));
   }
   #floor{position:absolute;inset:0;width:100%;height:100%;display:block}
-  #plan{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2}
-  #plan[hidden]{display:none}
   .hud{
     position:absolute;left:16px;bottom:14px;z-index:3;display:flex;gap:14px;
     align-items:center;padding:7px 11px;border:1px solid var(--line);border-radius:9px;
@@ -516,7 +514,6 @@
       <button class="vbtn on" data-view="dash" role="tab" aria-selected="true">Panel</button>
       <button class="vbtn" data-view="tasks" role="tab" aria-selected="false">Görevler</button>
       <button class="vbtn" data-view="floor" role="tab" aria-selected="false">Saha</button>
-      <button class="vbtn" data-view="plan" role="tab" aria-selected="false">Plan</button>
       <button class="vbtn" data-view="office" role="tab" aria-selected="false">Ofis 3D</button>
       <button class="vbtn" data-view="list" role="tab" aria-selected="false">Liste</button>
     </div>
@@ -659,7 +656,6 @@
       <div class="office-hint" id="officeHint" hidden>Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: sıfırla</div>
 
       <canvas id="floor" aria-label="Ajan ofisi görselleştirmesi"></canvas>
-      <canvas id="plan" aria-label="Kat planı" hidden></canvas>
 
       <div class="hud" aria-hidden="true">
         <span><i style="background:var(--teal)"></i>Planlama</span>
@@ -2108,16 +2104,14 @@ const officeEl = document.getElementById("office3d");
 const officeHint = document.getElementById("officeHint");
 const officeModes = document.getElementById("officeModes");
 const floorEl = document.getElementById("floor");
-const planEl = document.getElementById("plan");
 const flatEl = document.getElementById("flat");
 const tasksEl = document.getElementById("tasksView");
 const hudEl = document.querySelector(".hud");
 const hintEl = document.querySelector(".hint");
-const VIEWS = ["dash", "tasks", "floor", "plan", "office", "list"];
+const VIEWS = ["dash", "tasks", "floor", "office", "list"];
 
 let currentView = "dash";
 let lastDash = 0;
-let lastPlan = 0;
 let office = null, officeToken = 0, officeBust = 0, officeAutoRetry = 0;
 
 function setView(v, persist = true) {
@@ -2127,8 +2121,6 @@ function setView(v, persist = true) {
   dashEl.hidden = v !== "dash";
   tasksEl.hidden = v !== "tasks";
   floorEl.hidden = v !== "floor";
-  if (planEl) planEl.hidden = v !== "plan";
-  if (v === "plan") renderPlan();
   officeEl.hidden = v !== "office";
   officeHint.hidden = v !== "office";
   flatEl.hidden = v !== "list";
@@ -3382,227 +3374,6 @@ function stopDemo() {
 }
 
 /* =====================================================================
-   İzometrik ofis planı — referans: sıcak zemin, beyaz bölmeler, isim etiketleri
-   ===================================================================== */
-function renderPlan() {
-  if (!planEl || planEl.hidden) return;
-  const host = planEl.parentElement;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const W = host.clientWidth || 900;
-  const H = host.clientHeight || 700;
-  if (!W || !H) return;
-  if (planEl.width !== Math.round(W * dpr) || planEl.height !== Math.round(H * dpr)) {
-    planEl.width = Math.round(W * dpr);
-    planEl.height = Math.round(H * dpr);
-  }
-  planEl.style.width = "100%";
-  planEl.style.height = "100%";
-  const c = planEl.getContext("2d");
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.clearRect(0, 0, W, H);
-
-  const legendW = W > 760 ? 190 : 0;
-  const bg = "#F4F1EA";
-  const floorA = "#E9A64B";
-  const floorB = "#E7B267";
-  const floorC = "#EFC079";
-  const wall = "#F3F0EA";
-  const wallTop = "#D9D3C8";
-  const ink = "#2A2F36";
-  const muted = "#7C8390";
-
-  c.fillStyle = bg;
-  c.fillRect(0, 0, W, H);
-
-  // ölçek ve projeksiyon
-  const s = Math.max(9, Math.min((W - legendW - 80) / 27, (H - 120) / 20));
-  const ISOX = 0.87, ISOY = 0.5;
-  const cx = (W - legendW) / 2 - (18 - 14) * ISOX * s / 2;
-  const cy = H / 2 - (18 + 14) * ISOY * s / 2 + 10;
-  const P = (x, y, z = 0) => [cx + (x - y) * ISOX * s, cy + (x + y) * ISOY * s - z * s];
-  const poly = (pts, fill, stroke, lw = 1) => {
-    c.beginPath();
-    pts.forEach((pt, i) => (i ? c.lineTo(pt[0], pt[1]) : c.moveTo(pt[0], pt[1])));
-    c.closePath();
-    if (fill) { c.fillStyle = fill; c.fill(); }
-    if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(); }
-  };
-
-  // zemin gölgesi
-  poly([P(-0.4, -0.4), P(18.4, -0.4), P(18.4, 14.4), P(-0.4, 14.4)], "rgba(0,0,0,0.07)");
-
-  const fills = [floorA, floorB, floorC, floorA];
-  ZONES.forEach((z, i) => {
-    poly([P(z.x, z.y), P(z.x + z.w, z.y), P(z.x + z.w, z.y + z.h), P(z.x, z.y + z.h)], fills[i % fills.length], "rgba(255,255,255,0.55)", 1);
-    // parke çizgileri
-    c.save();
-    c.globalAlpha = 0.10;
-    c.strokeStyle = "#7A4A17";
-    for (let k = 0.4; k < z.h; k += 0.5) {
-      const a1 = P(z.x, z.y + k), a2 = P(z.x + z.w, z.y + k);
-      c.beginPath(); c.moveTo(a1[0], a1[1]); c.lineTo(a2[0], a2[1]); c.stroke();
-    }
-    c.restore();
-  });
-
-  // bölme duvarları (arka iki kenar)
-  const WH = 1.35;
-  const wallQuad = (x1, y1, x2, y2) => {
-    const a = P(x1, y1), b = P(x2, y2), b2 = P(x2, y2, WH), a2 = P(x1, y1, WH);
-    poly([a, b, b2, a2], wall, wallTop, 1);
-    c.beginPath(); c.moveTo(a2[0], a2[1]); c.lineTo(b2[0], b2[1]); c.strokeStyle = wallTop; c.lineWidth = 2; c.stroke();
-  };
-  for (const z of ZONES) {
-    wallQuad(z.x, z.y, z.x + z.w, z.y);
-    wallQuad(z.x, z.y, z.x, z.y + z.h);
-  }
-  // dış duvarlar
-  wallQuad(0, 0, 18, 0);
-  wallQuad(0, 0, 0, 14);
-
-  // mobilya + ajanlar (derinliğe göre)
-  const boxTop = (x, y, w, d, z, col) => {
-    const p1 = P(x, y, z), p2 = P(x + w, y, z), p3 = P(x + w, y + d, z), p4 = P(x, y + d, z);
-    const p4b = P(x, y + d, 0), p3b = P(x + w, y + d, 0);
-    poly([p4, p3, p3b, p4b], "rgba(0,0,0,0.16)");
-    poly([p1, p2, p3, p4], col, "rgba(0,0,0,0.22)", 1);
-  };
-
-  const items = [];
-  for (const [px, py, pw, pd] of [[10.9, 11.2, 2.0, 1.0]]) items.push({ d: px + py, kind: "table", px, py, pw, pd });
-  for (const [px, py] of [[15.9, 8.0], [15.9, 9.2]]) items.push({ d: px + py, kind: "rack", px, py, pw: 0.9, pd: 0.7 });
-  for (const id in state.agents) {
-    const a = state.agents[id];
-    items.push({ d: a.desk[0] + a.desk[1] + 0.6, kind: "desk", a });
-  }
-  items.sort((m, n) => m.d - n.d);
-
-  for (const it of items) {
-    if (it.kind === "table") {
-      boxTop(it.px, it.py, it.pw, it.pd, 0.72, "#C8B08A");
-      continue;
-    }
-    if (it.kind === "rack") {
-      boxTop(it.px, it.py, it.pw, it.pd, 1.25, "#8E8578");
-      continue;
-    }
-    const a = it.a;
-    const boss = !!a.boss;
-    const w = boss ? 2.9 : 1.9, h = boss ? 1.35 : 0.95;
-    const x = a.desk[0], y = a.desk[1];
-    if (boss) poly([P(x - 0.5, y - 0.6), P(x + w + 0.6, y - 0.6), P(x + w + 0.6, y + h + 1.5), P(x - 0.5, y + h + 1.5)], "#8E4A44", "rgba(0,0,0,0.15)", 1);
-    // sandalye
-    const ch = P(x + w / 2, y + h + 0.42, 0);
-    c.beginPath();
-    c.ellipse(ch[0], ch[1], 0.24 * s, 0.14 * s, 0, 0, Math.PI * 2);
-    c.fillStyle = "rgba(0,0,0,0.18)";
-    c.fill();
-    // masa
-    boxTop(x, y, w, h, 0.62, boss ? "#6B4A32" : "#9C8B75");
-    // ekran
-    const m1 = P(x + w / 2 - 0.28, y + 0.16, 0.86), m2 = P(x + w / 2 + 0.28, y + 0.16, 0.86);
-    c.beginPath(); c.moveTo(m1[0], m1[1]); c.lineTo(m2[0], m2[1]);
-    c.strokeStyle = "#2F3A46"; c.lineWidth = 3; c.stroke();
-  }
-
-  // ajanlar (masaların önünde)
-  const order = Object.values(state.agents).sort((m, n) => (m.y + m.x) - (n.y + n.x));
-  for (const a of order) {
-    const p = P(a.x, a.y, 0.0);
-    const working = a.status === "çalışıyor";
-    // gölge
-    c.beginPath();
-    c.ellipse(p[0], p[1] + 1, 0.26 * s, 0.13 * s, 0, 0, Math.PI * 2);
-    c.fillStyle = "rgba(0,0,0,0.22)";
-    c.fill();
-    // gövde
-    c.beginPath();
-    c.arc(p[0], p[1] - 0.32 * s, 0.20 * s, 0, Math.PI * 2);
-    c.fillStyle = a.color;
-    c.fill();
-    c.lineWidth = 1.5;
-    c.strokeStyle = working ? "#FFFFFF" : "rgba(255,255,255,0.65)";
-    c.stroke();
-    // baş
-    c.beginPath();
-    c.arc(p[0], p[1] - 0.56 * s, 0.12 * s, 0, Math.PI * 2);
-    c.fillStyle = "#F6E3C8";
-    c.fill();
-    c.strokeStyle = "rgba(0,0,0,0.25)";
-    c.lineWidth = 1;
-    c.stroke();
-    if (a.folder) {
-      c.fillStyle = "#E8B45A";
-      c.fillRect(p[0] + 0.18 * s, p[1] - 0.62 * s, 0.13 * s, 0.10 * s);
-      c.strokeStyle = "rgba(0,0,0,0.35)";
-      c.strokeRect(p[0] + 0.18 * s, p[1] - 0.62 * s, 0.13 * s, 0.10 * s);
-    }
-    // isim etiketi
-    c.font = "600 9.5px ui-sans-serif, 'Segoe UI', sans-serif";
-    const tw = c.measureText(a.name).width;
-    const bw = tw + 14, bh = 16;
-    const bx = p[0] - bw / 2, by = p[1] - 0.86 * s - bh;
-    c.fillStyle = "#FFFFFF";
-    c.strokeStyle = "rgba(0,0,0,0.12)";
-    c.beginPath();
-    if (c.roundRect) c.roundRect(bx, by, bw, bh, 4); else c.rect(bx, by, bw, bh);
-    c.fill();
-    c.stroke();
-    c.fillStyle = ink;
-    c.textAlign = "center";
-    c.textBaseline = "middle";
-    c.fillText(a.name, p[0], by + bh / 2 + 0.5);
-  }
-
-  // başlık
-  c.textAlign = "left";
-  c.textBaseline = "alphabetic";
-  c.fillStyle = ink;
-  c.font = "700 15px ui-sans-serif, 'Segoe UI', sans-serif";
-  c.fillText("Ajan Ofisi", 26, 34);
-  c.fillStyle = muted;
-  c.font = "500 10px ui-monospace, Consolas, monospace";
-  c.fillText(Object.keys(state.agents).length + " ajan · " + ZONES.length + " bölüm · izometrik plan", 26, 50);
-
-  // sağ liste
-  if (legendW) {
-    const lx = W - legendW - 16, ly = 24, lh = H - 48;
-    c.fillStyle = "#FFFFFF";
-    c.strokeStyle = "rgba(0,0,0,0.10)";
-    c.beginPath();
-    if (c.roundRect) c.roundRect(lx, ly, legendW, lh, 12); else c.rect(lx, ly, legendW, lh);
-    c.fill();
-    c.stroke();
-    c.fillStyle = ink;
-    c.font = "700 11px ui-sans-serif, 'Segoe UI', sans-serif";
-    c.fillText("Ajanlar", lx + 14, ly + 26);
-    c.fillStyle = muted;
-    c.font = "500 9px ui-monospace, Consolas, monospace";
-    c.fillText(Object.keys(state.agents).length + " KAYITLI", lx + 14, ly + 40);
-
-    let rowY = ly + 58;
-    const list = Object.values(state.agents);
-    for (const a of list) {
-      if (rowY > ly + lh - 12) break;
-      c.beginPath();
-      c.arc(lx + 20, rowY, 5, 0, Math.PI * 2);
-      c.fillStyle = a.color;
-      c.fill();
-      c.fillStyle = ink;
-      c.font = "600 10px ui-sans-serif, 'Segoe UI', sans-serif";
-      c.fillText(a.name.length > 20 ? a.name.slice(0, 19) + "…" : a.name, lx + 32, rowY + 3.5);
-      c.fillStyle = muted;
-      c.font = "500 8.5px ui-monospace, Consolas, monospace";
-      c.fillText(a.status, lx + 32, rowY + 15);
-      rowY += 30;
-    }
-    c.fillStyle = muted;
-    c.font = "500 8.5px ui-monospace, Consolas, monospace";
-    c.fillText("bugün · $" + state.cost.toFixed(4), lx + 14, ly + lh - 12);
-  }
-}
-
-/* =====================================================================
    9. Canlı mod (SSE)
    ===================================================================== */
 let es = null;
@@ -3976,7 +3747,6 @@ function frame(now) {
     }
   }
   if (currentView === "floor") draw(now);
-  if (currentView === "plan" && now - lastPlan > 120) { lastPlan = now; renderPlan(); }
   if (currentView === "dash" && now - lastDash > 250) { lastDash = now; renderDash(); }
   requestAnimationFrame(frame);
 }
@@ -4021,7 +3791,7 @@ function boot() {
   if (p.get("live") === "1") setTimeout(toggleLive, 300);
 
   // ?view=dash|floor|office|list ; yoksa son tercih, varsayılan Panel
-  const map = { flat: "list", dash: "dash", tasks: "tasks", floor: "floor", plan: "plan", office: "office", list: "list" };
+  const map = { flat: "list", dash: "dash", tasks: "tasks", floor: "floor", office: "office", list: "list" };
   const wanted = map[p.get("view")] || localStorage.getItem("zk_view") || "dash";
   const savedTheme = localStorage.getItem("zk_theme") ||
     (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
