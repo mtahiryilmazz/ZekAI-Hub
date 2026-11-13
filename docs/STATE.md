@@ -30,12 +30,16 @@
 | Paylaşılan skill (sürümlü, `/api/skills`) | Çalışıyor |
 | Günlük harcama tavanı (sunucu tarafı) | Çalışıyor |
 | Mock sağlayıcı (anahtarsız) | Çalışıyor |
+| İş planı önce, üretim onaydan sonra | Çalışıyor |
+| Adım bazlı klasör rengi (ajan kendi rengi) | Çalışıyor |
 
 ## Bilinen sınırlar
 
 - Demo olayları **maliyet/token sayacına yazılmaz**; gerçek sayaç yalnız `/api/chat` yanıtından gelir.
 - Maliyet yalnız fiyat tablosundaki modellerde hesaplanır; Gemini 3.5 Flash tabloda yok → `$0.0000`.
 - Tek model çağrısı; çoklu ajan çağrıları (debate/council) yok.
+- İş planı sezgisel üretilir (0 çağrı); adım süreleri sabit temsildir, gerçek iş süresi değil.
+- Onay akışı: plan → kullanıcı onayı → sıralı adımlar → tek üretim çağrısı. Reddedilen planda hiç üretim yapılmaz.
 - Araç yok: model repoyu okuyamaz/web'e bakamaz.
 - 3D ilk açılış 3-4 sn (PMREM + shader); WebGL yoksa “Saha görünümü” yedeği.
 - Dış entegrasyon (Slack/GitHub/Linear) yok; OAuth taklit edilmedi.

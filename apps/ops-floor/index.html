@@ -288,6 +288,26 @@
   /* ---------- görev konsolu ---------- */
   .console{margin-top:10px}
   .chat{display:flex;flex-direction:column;gap:8px;max-height:210px;overflow:auto;margin-bottom:10px}
+  .msg.plan{align-self:stretch;background:rgba(232,180,90,.07);border:1px solid rgba(232,180,90,.3);border-radius:10px;padding:10px 12px;color:#E7D9C2}
+  [data-theme="light"] .msg.plan{background:rgba(160,120,40,.07);border-color:rgba(160,120,40,.28);color:#3A3020}
+  .plHead{display:flex;justify-content:space-between;align-items:center;font:700 10px/1 ui-monospace,Consolas,monospace;letter-spacing:.12em;color:#E8B45A;margin-bottom:8px}
+  .plHead b{font-weight:700;color:#9AA7B6;letter-spacing:0}
+  .plGoal{font-size:12.5px;line-height:1.5;margin-bottom:8px}
+  .plSteps{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:5px}
+  .plSteps li{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.4}
+  .plSteps .n{flex:0 0 16px;font:600 10px/1.4 ui-monospace,Consolas,monospace;color:#8A94A3}
+  .plSteps .d{flex:1}
+  .plSteps .w{flex:0 0 auto;font:600 10px/1.4 ui-monospace,Consolas,monospace;color:#9FB3C8}
+  .plSteps .dot{flex:0 0 7px;height:7px;border-radius:50%;align-self:center}
+  .plOut{font-size:11.5px;color:#9AA7B6;border-top:1px solid rgba(255,255,255,.09);padding-top:7px;margin-bottom:9px}
+  .plFoot{display:flex;gap:7px;align-items:center}
+  .plFoot .sp{flex:1}
+  .plFoot button{font:600 11px/1 inherit;padding:7px 12px;border-radius:7px;border:1px solid transparent;cursor:pointer}
+  .plFoot .ok{background:#2F8F5B;color:#F3FFF8;border-color:#3FA86D}
+  .plFoot .no{background:transparent;color:#C8A0A0;border-color:rgba(240,138,138,.4)}
+  .plFoot .ok:disabled,.plFoot .no:disabled{opacity:.45;cursor:default}
+  .tpill.wait{background:rgba(232,180,90,.16);color:#E8B45A}
+  .tpill.rej{background:rgba(240,138,138,.14);color:#F0A0A0}
   .chat:empty::before{content:"Henüz istem yok · Ayarlar'dan sağlayıcı seçin, mock ile hemen deneyin.";
     color:var(--dim);font-size:11px}
   .msg{max-width:78%;padding:8px 10px;border-radius:9px;font-size:11.5px;line-height:1.5;
@@ -1658,7 +1678,7 @@ function drawFolder(c, sx, sy, s = 1, tone = "gold") {
   const FOLDER_COLORS = { gold: "#E8B45A", green: "#6FD3A0", red: "#F08A8A", orange: "#F0A04A" };
   c.save();
   c.translate(sx, sy);
-  c.fillStyle = FOLDER_COLORS[tone] || FOLDER_COLORS.gold;
+  c.fillStyle = FOLDER_COLORS[tone] || (/^(#|rgb|hsl)/.test(String(tone || "")) ? tone : FOLDER_COLORS.gold);
   c.strokeStyle = "rgba(0,0,0,.45)";
   c.lineWidth = 1;
   c.beginPath();
@@ -1791,21 +1811,42 @@ function emit(type, agentId, msg, opts = {}) {
     renderPipeline();
     summonAll("supervisor");
   } else if (type === "agent.started" && agentId !== "supervisor") {
+    // klasörün rengi görevi alan ajanın kendi rengi — kim çalışıyorsa onun tonu
+    const ag = state.agents[agentId];
     state.agents.supervisor.folder = true;
     state.agents.supervisor.folderTone = "gold";
-    startPickup(agentId, "supervisor");
-  } else if (type === "task.completed" || type === "task.failed") {
-    // renkli kapanış: başarı yeşil, başarısızlık kırmızı; 5 sn sonra temizlenir
-    const tone = type === "task.completed" ? "green" : "red";
-    for (const id in state.agents) {
-      const ag = state.agents[id];
+    if (ag) {
       ag.folder = true;
-      ag.folderTone = tone;
-      ag.handoff = null;
+      ag.folderTone = ag.color;
+      ag.folderToken = (ag.folderToken || 0) + 1;
+    }
+    startPickup(agentId, "supervisor");
+  } else if (type === "agent.completed" && agentId !== "supervisor") {
+    // adımı biten ajan klasörü kendi renginde kısa süre tutar, sonra bırakır
+    const ag = state.agents[agentId];
+    if (ag && ag.folder) {
       const token = (ag.folderToken = (ag.folderToken || 0) + 1);
       setTimeout(() => {
-        if (ag.folderToken === token) ag.folder = false; // yeni renk geldiyse dokunma
-      }, 5000);
+        if (ag.folderToken === token) ag.folder = false;
+      }, 1600);
+    }
+  } else if (type === "task.completed" || type === "task.failed" || type === "task.rejected") {
+    // kapanış yalnız denetçide: yeşil / kırmızı; ajanlar kendi klasörünü bırakır
+    const tone = type === "task.completed" ? "green" : "red";
+    const sup = state.agents.supervisor;
+    sup.folder = true;
+    sup.folderTone = tone;
+    sup.handoff = null;
+    const stoken = (sup.folderToken = (sup.folderToken || 0) + 1);
+    setTimeout(() => {
+      if (sup.folderToken === stoken) sup.folder = false;
+    }, 5000);
+    for (const id in state.agents) {
+      const ag2 = state.agents[id];
+      if (id !== "supervisor") {
+        ag2.folder = false;
+        ag2.handoff = null;
+      }
     }
     state.transfers = [];
   } else if (type === "review.failed") {
@@ -3175,59 +3216,197 @@ function setRouteBadge(steps) {
   el.textContent = "Denetçi → " + steps.map((s) => state.agents[s.agent].name + " · " + s.tier).join(" → ");
 }
 
+/* ---------- iş planı (rapor): model çağrısı yapmaz ---------- */
+const WORK_KINDS = [
+  { id: "video", re: /(reels?|video|shorts|tiktok|kurgu|çekim|senaryo)/i, label: "Reels / video", out: "senaryo, çekim listesi, kurgu notu" },
+  { id: "site", re: /(site|web|landing|sayfa|html|portföy|blog)/i, label: "Web sayfası", out: "sayfa taslağı + içerik metni" },
+  { id: "code", re: /(kod|uygulama|app|özellik|bug|script|api|fonksiyon)/i, label: "Kod / uygulama", out: "çalışan kod + kısa not" },
+  { id: "design", re: /(tasarım|logo|görsel|afiş|afis|mockup|arayüz|ikon)/i, label: "Tasarım", out: "görsel yön + varyasyon" },
+  { id: "report", re: /(rapor|analiz|sunum|brief|özet|strateji|plan|içerik)/i, label: "Rapor / analiz", out: "yapılandırılmış rapor" },
+  { id: "research", re: /(araştır|kaynak|rakip|pazar|trend|incele|topla)/i, label: "Araştırma", out: "kaynaklı bulgu listesi" },
+];
+
+function buildProposal(text) {
+  const t = String(text || "");
+  let kinds = WORK_KINDS.filter((k) => k.re.test(t));
+  if (!kinds.length) kinds = [WORK_KINDS.find((k) => k.id === "report")];
+  const produce = kinds.filter((k) => ["video", "site", "code", "design"].includes(k.id));
+  const steps = [];
+
+  // kısa sorular için tek adımlı hafif plan — 4 ajanı boşa koşturmayalım
+  if (!WORK_KINDS.some((k) => k.re.test(t)) && t.length <= 24) {
+    return {
+      goal: t,
+      kinds: ["Kısa yanıt"],
+      steps: [
+        { agent: "planner", tier: "T3", task: "Soruyu tek adıma indir", out: "kısa plan", eta: 3 },
+        { agent: "analyst", tier: "T2", task: "Kısa yanıt hazırla", out: "yanıt", eta: 4 },
+      ],
+      outputs: ["yanıt"], eta: 7, calls: 1,
+    };
+  }
+
+  steps.push({ agent: "planner", tier: "T3", task: "Brief'i işe böl, sırayı ve çıktıları yaz", out: "iş planı", eta: 5 });
+  if (kinds.some((k) => k.id === "research")) {
+    steps.push({ agent: "researcher", tier: "T1", task: "Kaynak ve rakip taraması yap", out: "bulgular", eta: 9 });
+  }
+  if (produce.length) {
+    steps.push({ agent: "analyst", tier: "T2", task: "Hedef kitle, mesaj ve başarı ölçütünü netleştir", out: "içerik çerçevesi", eta: 7 });
+    steps.push({ agent: "builder", tier: "T2", task: produce.map((k) => k.label).join(" + ") + " üret", out: produce.map((k) => k.out).join("; "), eta: 14 });
+  } else {
+    steps.push({ agent: "analyst", tier: "T2", task: "Raporu yaz ve sonuçları sırala", out: "rapor", eta: 11 });
+  }
+  steps.push({ agent: "reviewer", tier: "T1", task: "Çıktıyı ölçütlere göre denetle", out: "denetim notu", eta: 6 });
+
+  return {
+    goal: t,
+    kinds: kinds.map((k) => k.label),
+    steps,
+    outputs: produce.length ? [...new Set(produce.map((k) => k.out))] : ["rapor"],
+    eta: steps.reduce((sum, x) => sum + x.eta, 0),
+    calls: 1,
+  };
+}
+
+/* Kullanıcının önce gördüğü iş planı. Onay gelmeden hiçbir üretim başlamaz. */
+function appendPlanCard(proposal, task) {
+  const log = document.getElementById("chatLog");
+  if (!log) return;
+  const wrap = document.createElement("div");
+  wrap.className = "msg plan";
+
+  const head = document.createElement("div");
+  head.className = "plHead";
+  const hl = document.createElement("span");
+  hl.textContent = "İŞ PLANI";
+  const stamp = document.createElement("b");
+  stamp.textContent = "onay bekliyor · " + proposal.steps.length + " adım · ~" + proposal.eta + " sn";
+  head.append(hl, stamp);
+
+  const goal = document.createElement("div");
+  goal.className = "plGoal";
+  goal.textContent = proposal.goal;
+
+  const ol = document.createElement("ol");
+  ol.className = "plSteps";
+  proposal.steps.forEach((st, i) => {
+    const li = document.createElement("li");
+    const n = document.createElement("span"); n.className = "n"; n.textContent = String(i + 1);
+    const ag = state.agents[st.agent];
+    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = ag ? ag.color : "#8A94A3";
+    const d = document.createElement("span"); d.className = "d"; d.textContent = st.task;
+    const w = document.createElement("span"); w.className = "w"; w.textContent = (ag ? ag.name : st.agent) + " · " + st.tier;
+    li.append(n, dot, d, w);
+    ol.appendChild(li);
+  });
+
+  const out = document.createElement("div");
+  out.className = "plOut";
+  out.textContent = "Beklenen çıktı: " + proposal.outputs.join(" · ") + " — onaylarsan " + proposal.calls +
+    " model çağrısıyla üretilir. Onaylamazsan hiçbir şey üretilmez.";
+
+  const foot = document.createElement("div");
+  foot.className = "plFoot";
+  const ok = document.createElement("button");
+  ok.className = "ok"; ok.textContent = "Onayla ve başlat";
+  const no = document.createElement("button");
+  no.className = "no"; no.textContent = "Reddet";
+  const sp = document.createElement("span"); sp.className = "sp";
+  foot.append(ok, no, sp);
+
+  ok.addEventListener("click", () => {
+    if (task.status !== "plan") return;
+    ok.disabled = true; no.disabled = true;
+    stamp.textContent = "onaylandı · üretim sürüyor";
+    approveTask(task.id);
+  });
+  no.addEventListener("click", () => {
+    if (task.status !== "plan") return;
+    ok.disabled = true; no.disabled = true;
+    stamp.textContent = "reddedildi · üretim yapılmadı";
+    rejectTask(task.id);
+  });
+
+  wrap.append(head, goal, ol, out, foot);
+  log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
+
 async function sendPrompt(raw) {
   const input = document.getElementById("prompt");
-  const text = (raw !== undefined ? String(raw) : input.value || "").trim();
+  const text = (raw !== undefined ? String(raw) : (input && input.value) || "").trim();
   if (!text || chatBusy) return;
   chatBusy = true;
   stopDemo();
-  if (raw === undefined) input.value = "";
+  if (raw === undefined && input) input.value = "";
   appendMsg("user", text);
   chatHistory.push({ role: "user", content: text });
 
-  const steps = planTask(text);
-  state.plan = steps;
-  setRouteBadge(steps);
-  appendMsg("route", "Plan · " + steps.map((s) => state.agents[s.agent].name + " (" + s.tier + ")").join(" → "));
-  const task = newTask(text, steps);
-  const startedAt = performance.now();
-
+  const proposal = buildProposal(text);
+  state.plan = proposal.steps;
+  setRouteBadge(proposal.steps);
+  const task = newTask(text, proposal);
   emit("task.created", "supervisor", "İstem alındı: " + text.slice(0, 56), { status: "çalışıyor" });
-  for (let i = 0; i < steps.length; i++) {
-    const s = steps[i];
-    emit("agent.started", s.agent, s.tier + " · görev alındı", { status: "çalışıyor" });
-    await sleep(260);
-    if (i < steps.length - 1) {
-      emit("agent.completed", s.agent, "İşi bitirdi · sıradaki ajana devrediyor", { severity: "ok" });
-      await sleep(420);
-    }
-  }
+  state.agents.supervisor.status = "çalışıyor";
+  await sleep(560);
+  emit("plan.ready", "supervisor", "İş planı hazır · onay bekliyor");
   state.agents.supervisor.status = "boşta";
-  setPipeline(0);
-
-  const last = steps[steps.length - 1];
-  const agent = state.agents[last.agent];
+  updateTask(task.id, { status: "plan" });
+  appendPlanCard(proposal, task);
+  chatBusy = false;
   const btn = document.getElementById("btnSend");
-  btn.disabled = true;
-  btn.textContent = "…";
+  if (btn) { btn.disabled = false; btn.textContent = "Gönder"; }
+}
+
+let busyTaskId = null;
+
+/* Onaydan sonra: adımlar sırayla yürür, her ajan kendi süresinde bitirir. */
+async function approveTask(taskId) {
+  const task = state.tasks.find((x) => x.id === taskId);
+  if (!task || task.status !== "plan") return;
+  if (busyTaskId) { appendMsg("err", "Başka bir görev çalışıyor · bitmesini bekle."); return; }
+  busyTaskId = task.id;
+  updateTask(task.id, { status: "running", done: [] });
+  appendMsg("route", "Plan onaylandı · üretim sırayla başlıyor");
+  emit("plan.approved", "supervisor", "Plan onaylandı · üretim başlıyor", { severity: "ok", status: "çalışıyor" });
+  const startedAt = performance.now();
+  const btn = document.getElementById("btnSend");
+
+  for (let i = 0; i < task.plan.length; i++) {
+    const st = task.plan[i];
+    const ag = state.agents[st.agent];
+    emit("agent.started", st.agent, (i + 1) + "/" + task.plan.length + " · " + st.task, { status: "çalışıyor" });
+    updateTask(task.id, { step: i });
+    await sleep(Math.max(2, st.eta || 6) * 1000);
+    emit("agent.completed", st.agent, "Adım bitti · " + (st.out || "çıktı hazır"), { severity: "ok", status: "boşta" });
+    const doneList = (task.done || []).slice();
+    doneList.push(st.agent);
+    updateTask(task.id, { done: doneList });
+    if (ag) ag.status = "boşta";
+    await sleep(700);
+  }
+
+  const producer = task.plan.find((st) => st.agent === "builder") || task.plan[task.plan.length - 1];
+  const agent = state.agents[producer.agent];
+  if (btn) { btn.disabled = true; btn.textContent = "…"; }
   try {
     const messages = [
-      { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Model katmanı: " + last.tier + ". Plan: " + steps.map((s) => state.agents[s.agent].name).join(" → ") + ". Kısa, Türkçe ve uygulanabilir yanıt ver." },
+      { role: "system", content: "Sen ZekAI Hub ofisinde \"" + agent.name + "\" rolüsün (" + agent.role + "). Onaylanan iş planı: " + task.plan.map((st) => (state.agents[st.agent] ? state.agents[st.agent].name : st.agent) + " → " + st.task).join(" | ") + ". Beklenen çıktı: " + (producer.out || "rapor") + ". Kısa, Türkçe ve uygulanabilir yanıt ver." },
       ...compactHistory(6, 2600),
     ];
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, tier: last.tier, agent: last.agent, skill_id: activeSkillId || "" }),
+      body: JSON.stringify({ messages, tier: producer.tier, agent: producer.agent, skill_id: activeSkillId || "" }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "istek başarısız");
     appendMsg("bot", d.text || "(boş yanıt)");
     chatHistory.push({ role: "assistant", content: d.text || "" });
-    for (const s of steps) state.agents[s.agent].status = "boşta";
-    emit("model.completed", last.agent, (d.model || "model") + " · " + (d.tier || last.tier) + " · yanıt geldi", {
+    for (const st of task.plan) if (state.agents[st.agent]) state.agents[st.agent].status = "boşta";
+    emit("model.completed", producer.agent, (d.model || "model") + " · " + (d.tier || producer.tier) + " · yanıt geldi", {
       cost: d.cost_usd || 0, tokens: (d.usage && d.usage.out) || 0, severity: "ok",
     });
-    emit("task.completed", last.agent, "Yanıt teslim edildi", { severity: "ok" });
+    emit("task.completed", producer.agent, "Çıktı teslim edildi", { severity: "ok" });
     updateTask(task.id, {
       status: "ok",
       result: d.text || "",
@@ -3237,13 +3416,20 @@ async function sendPrompt(raw) {
     });
   } catch (e) {
     appendMsg("err", String(e.message || e));
-    emit("task.failed", last.agent, "İstem başarısız: " + String(e.message || e), { severity: "err" });
+    emit("task.failed", producer.agent, "Üretim başarısız: " + String(e.message || e), { severity: "err" });
     updateTask(task.id, { status: "err", result: String(e.message || e), ms: Math.round(performance.now() - startedAt) });
   } finally {
-    chatBusy = false;
-    btn.disabled = false;
-    btn.textContent = "Gönder";
+    busyTaskId = null;
+    if (btn) { btn.disabled = false; btn.textContent = "Gönder"; }
   }
+}
+
+function rejectTask(taskId) {
+  const task = state.tasks.find((x) => x.id === taskId);
+  if (!task || task.status !== "plan") return;
+  updateTask(task.id, { status: "rejected", result: "Kullanıcı planı reddetti · üretim yapılmadı." });
+  emit("task.rejected", "supervisor", "Plan reddedildi · üretim yapılmadı", { severity: "err" });
+  appendMsg("err", "Plan reddedildi. Hiçbir üretim başlatılmadı.");
 }
 
 /* ---------- görev geçmişi ---------- */
@@ -3260,12 +3446,16 @@ function saveTasks() {
   try { localStorage.setItem("zk_tasks", JSON.stringify(state.tasks.slice(0, 30))); } catch (e) { /* kota */ }
 }
 
-function newTask(text, steps) {
+function newTask(text, proposal) {
+  const steps = Array.isArray(proposal) ? proposal : proposal.steps;
   const t = {
     id: "tsk_" + Math.random().toString(36).slice(2, 6),
     prompt: text,
-    plan: steps.map((s) => ({ agent: s.agent, tier: s.tier })),
-    status: "running",
+    plan: steps.map((s) => ({ agent: s.agent, tier: s.tier, task: s.task || "", out: s.out || "", eta: s.eta || 0 })),
+    outputs: Array.isArray(proposal) ? [] : (proposal.outputs || []),
+    eta: Array.isArray(proposal) ? 0 : (proposal.eta || 0),
+    done: [],
+    status: "plan",
     result: "",
     cost: 0,
     tokens: 0,
@@ -3316,8 +3506,8 @@ function renderTasks() {
     const ts = document.createElement("span");
     ts.className = "ts";
     const pill = document.createElement("span");
-    pill.className = "tpill " + (t.status === "ok" ? "ok" : t.status === "err" ? "err" : "run");
-    pill.textContent = t.status === "ok" ? "tamam" : t.status === "err" ? "hata" : "koşuyor";
+    pill.className = "tpill " + (t.status === "ok" ? "ok" : t.status === "err" ? "err" : t.status === "plan" ? "wait" : t.status === "rejected" ? "rej" : "run");
+    pill.textContent = t.status === "ok" ? "tamam" : t.status === "err" ? "hata" : t.status === "plan" ? "onay" : t.status === "rejected" ? "red" : "koşuyor";
     ts.appendChild(pill);
     row.append(tt, tp, ts);
     row.addEventListener("click", () => { selectedTaskId = t.id; renderTasks(); });
@@ -3332,29 +3522,57 @@ function renderTaskDetail() {
   const t = state.tasks.find((x) => x.id === selectedTaskId);
   const meta = document.getElementById("taskDetailMeta");
   if (!t) { body.textContent = "Bir görev seç."; if (meta) meta.textContent = ""; return; }
+  const label = { ok: "tamam", err: "hata", plan: "onay bekliyor", rejected: "reddedildi", running: "koşuyor" }[t.status] || "koşuyor";
   if (meta) {
-    meta.textContent = t.id + " · " + (t.status === "ok" ? "tamam" : t.status === "err" ? "hata" : "koşuyor") +
-      (t.cost ? " · $" + t.cost.toFixed(4) : "") + (t.ms ? " · " + (t.ms / 1000).toFixed(1) + " sn" : "");
+    meta.textContent = t.id + " · " + label + (t.cost ? " · $" + t.cost.toFixed(4) : "") + (t.ms ? " · " + (t.ms / 1000).toFixed(1) + " sn" : "");
   }
   body.textContent = "";
+
+  const h0 = document.createElement("h4");
+  h0.textContent = "İş planı" + (t.eta ? " · ~" + t.eta + " sn" : "");
   const plan = document.createElement("div");
   plan.className = "plan";
-  for (const s of t.plan || []) {
-    const c = document.createElement("span");
-    c.className = "chip";
-    c.textContent = (state.agents[s.agent] ? state.agents[s.agent].name : s.agent) + " · " + s.tier;
-    plan.appendChild(c);
-  }
+  (t.plan || []).forEach((s, i) => {
+    const ag = state.agents[s.agent];
+    const done = t.status !== "plan" && (t.done || []).includes(s.agent);
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.style.borderColor = done ? "rgba(111,211,160,.55)" : ag ? ag.color : "";
+    chip.textContent = (i + 1) + ". " + (ag ? ag.name : s.agent) + " · " + s.tier + (s.out ? " · " + s.out : "") + (done ? " ✓" : "");
+    plan.appendChild(chip);
+  });
+
   const h1 = document.createElement("h4");
   h1.textContent = "İstem";
   const p = document.createElement("div");
   p.textContent = t.prompt;
+
+  body.append(h0, plan, h1, p);
+
+  if (t.status === "plan") {
+    const foot = document.createElement("div");
+    foot.className = "plFoot";
+    foot.style.marginTop = "10px";
+    const ok = document.createElement("button");
+    ok.className = "ok";
+    ok.textContent = "Onayla ve başlat";
+    const no = document.createElement("button");
+    no.className = "no";
+    no.textContent = "Reddet";
+    ok.addEventListener("click", () => approveTask(t.id));
+    no.addEventListener("click", () => rejectTask(t.id));
+    foot.append(ok, no);
+    body.appendChild(foot);
+  }
+
   const h2 = document.createElement("h4");
-  h2.textContent = t.status === "running" ? "Durum" : "Sonuç";
+  h2.textContent = t.status === "plan" ? "Durum" : "Sonuç";
   const res = document.createElement("div");
   res.className = "res";
-  res.textContent = t.status === "running" ? "Çalışıyor…" : (t.result || "—");
-  body.append(plan, h1, p, h2, res);
+  res.textContent = t.status === "plan" ? "Plan onay bekliyor · henüz üretim yapılmadı." :
+    t.status === "rejected" ? "Reddedildi · üretim yapılmadı." :
+    t.status === "running" ? "Çalışıyor…" : (t.result || "—");
+  body.append(h2, res);
 }
 
 function stopDemo() {
