@@ -1,0 +1,7 @@
+{
+  "name": "ZekAI Hub - Ops Floor",
+  "description": "ZekAI Hub Ops Floor & 3D Autonomous Agent Swarm Office",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,451 @@
+
+Bağlı değil
+🌐
+
+Türkçe
+Antigravity bağlantısı
+Bağla / Onar
+Bağlantıyı kaldır
+Kurulum dizini
+C:\Users\BT\AppData\Local\Programs\antigravity
+Sürüm
+2.35.2
+Bağlantı durumu
+Bağlı değil
+Yamalı dil sunucusu
+Yok
+Antigravity çalışıyor
+Hayır
+Google üst akışı
+https://daily-cloudcode-pa.googleapis.com
+Sağlayıcılar
+Sağlayıcı ekle
+Ad	Protokol	Adres	Anahtar	
+Evren LLM	anthropic	https://evren-llmapi.ssyz.org.tr	evr…k6_U	Düzenle Sil
+Modeller
+Model ekle
+Görünen ad	Sağlayıcı	Üst akış modeli	Yerel numara	Etkin	
+deepseek-v4.1-flash	Evren LLM	deepseek-v4.1-flash	M1650		Test Düzenle Sil
+glm-5.3	Evren LLM	glm-5.3	M1649		Test Düzenle Sil
+auto	Evren LLM	auto	M1648		Test Düzenle Sil
+Kaydettikten sonra Antigravity bir sonraki model listesi çekişinde (yaklaşık 6 dakikada bir) açılır listeyi günceller; beklemek istemezseniz Antigravity'yi tamamen kapatıp açın.
+
+Son istekler
+Yenile
+Zaman	Tür	th.model	Durum	Süre	token giriş/çıkış
+Henüz istek yok
+Ayarlar
+Dinleme portu
+50998
+Üst akış proxy'si
+auto
+Antigravity dizini
+Boş bırakılırsa otomatik bulunur, örn. C:\Users\siz\AppData\Local\Programs\antigravity
+Yamalı dil sunucusu
+
+Etkin (model listesi için gerekli, açık kalması önerilir)
+Ayarları kaydet
+Port veya yama anahtarını değiştirdikten sonra yeniden “Bağla / Onar” gerekir
+Antigravity yerel modelleri (son model listesi)
+ID	Ad	İç numara
+Henüz model listesi alınmadı (bağladıktan sonra Antigravity'yi açın)
+Çalışma günlüğü
+2026/11/18 13:43:07.545029 agbridge 0.2.0-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 13:48:51.543880 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 13:48:52.280876 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 13:51:30.191424 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 13:51:30.639749 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 13:51:31.705114 agbridge 0.2.0-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 14:01:44.323772 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 14:01:44.784176 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 14:01:45.929024 agbridge 0.2.1-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 14:01:47.482740 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 14:01:47.969856 [catalog] native=36 custom=3
+2026/11/18 14:02:13.361626 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:02:18.854491 [custom] deepseek-v4.1-flash failed after 5492ms: HTTP 429: Model şu an yoğun; hesabınız bu modelde en fazla 2 eşzamanlı istek açabilir. Devam eden isteklerden biri tamamlanınca tekrar deneyin.
+2026/11/18 14:02:19.872452 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:02:25.265312 [custom] deepseek-v4.1-flash failed after 5392ms: HTTP 429: Model şu an yoğun; hesabınız bu modelde en fazla 2 eşzamanlı istek açabilir. Devam eden isteklerden biri tamamlanınca tekrar deneyin.
+2026/11/18 14:02:26.787966 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:02:32.004905 [custom] deepseek-v4.1-flash failed after 5216ms: HTTP 429: Model şu an yoğun; hesabınız bu modelde en fazla 2 eşzamanlı istek açabilir. Devam eden isteklerden biri tamamlanınca tekrar deneyin.
+2026/11/18 14:02:35.295168 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:02:37.991174 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 14:02:39.405359 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 14:02:39.874395 [catalog] native=36 custom=3
+2026/11/18 14:03:58.599340 [custom] deepseek-v4.1-flash failed after 83304ms: context canceled
+2026/11/18 14:14:12.327175 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 14:14:12.883829 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 14:14:12.935392 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 14:29:02.419627 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 14:29:02.831444 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 14:29:02.942458 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 14:29:28.384676 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 14:29:28.910309 [catalog] native=36 custom=3
+2026/11/18 14:29:38.789617 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:29:52.186967 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 14:29:53.294099 [catalog] native=36 custom=3
+2026/11/18 14:29:57.811976 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:50:03.811443 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 14:50:04.911041 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 14:50:05.397420 [catalog] native=36 custom=3
+2026/11/18 14:50:28.043381 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 14:50:29.101670 [catalog] native=36 custom=3
+2026/11/18 14:50:34.456508 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 14:50:35.591117 [catalog] native=36 custom=3
+2026/11/18 14:52:55.501212 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:53:58.415465 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:55:07.243596 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:55:10.831443 [custom] deepseek-v4.1-flash failed after 3587ms: HTTP 502: 上游返回了空响应
+2026/11/18 14:55:14.861313 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:55:52.172674 [catalog] native=36 custom=3
+2026/11/18 14:56:33.009989 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:56:53.861666 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:57:26.913353 [custom] deepseek-v4.1-flash failed after 33051ms: context canceled
+2026/11/18 14:58:15.668568 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/18 14:59:21.240751 [custom] auto failed after 65572ms: context canceled
+2026/11/18 14:59:30.854465 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 14:59:42.750506 [custom] deepseek-v4.1-flash failed after 11896ms: context canceled
+2026/11/18 14:59:47.805910 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 14:59:48.276623 [catalog] native=36 custom=3
+2026/11/18 15:00:03.430961 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 15:03:21.638404 [custom] deepseek-v4.1-flash failed after 198207ms: context canceled
+2026/11/18 15:23:49.592751 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 15:23:53.252857 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:23:53.750500 [catalog] native=36 custom=3
+2026/11/18 15:24:01.317765 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/18 15:24:04.922675 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:24:05.189773 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:24:05.206973 [catalog] native=36 custom=3
+2026/11/18 15:24:09.367709 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:24:09.542091 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:24:10.068838 [catalog] native=36 custom=3
+2026/11/18 15:24:14.220062 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/18 15:25:20.452278 [custom] deepseek-v4.1-flash failed after 66232ms: HTTP 503: Model şu anda dolu, lütfen kısa bir süre sonra tekrar deneyin.
+2026/11/18 15:25:49.667200 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:30:09.104326 [catalog] native=36 custom=3
+2026/11/18 15:33:54.850747 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:36:09.132009 [catalog] native=36 custom=3
+2026/11/18 15:36:20.495943 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:37:51.845220 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:38:15.917328 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:41:35.538643 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.32.2, running=true)
+2026/11/18 15:41:36.012083 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/18 15:41:36.247449 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/18 15:41:46.831151 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:42:03.079441 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/18 15:42:03.082173 [catalog] native=36 custom=3
+2026/11/18 15:42:05.847571 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:43:19.538377 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:44:25.260726 [custom] glm-5.3 failed after 65722ms: HTTP 503: Model şu anda dolu, lütfen kısa bir süre sonra tekrar deneyin.
+2026/11/18 15:44:29.282200 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:46:09.851623 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:47:09.074167 [catalog] native=36 custom=3
+2026/11/18 15:48:11.650192 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:49:17.949497 [custom] glm-5.3 failed after 66299ms: HTTP 503: Model şu anda dolu, lütfen kısa bir süre sonra tekrar deneyin.
+2026/11/18 15:49:21.976423 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/18 15:52:00.898803 [custom] glm-5.3 failed after 158922ms: context canceled
+2026/11/23 08:44:09.391045 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/23 08:52:09.287736 [shim] language server registered: cloudCode=https://daily-cloudcode-pa.googleapis.com apiServer=https://generativelanguage.googleapis.com inference=
+2026/11/23 08:52:19.980156 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 08:52:20.067998 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 08:52:20.422775 [catalog] native=39 custom=3
+2026/11/23 08:52:42.343997 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 08:52:42.776815 [catalog] native=39 custom=3
+2026/11/23 08:53:27.435855 hub hook restored in C:\Users\BT\.gemini\bin
+2026/11/23 08:53:32.298588 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/23 08:53:35.692438 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 08:53:35.858078 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 08:53:36.125989 [catalog] native=39 custom=3
+2026/11/23 08:53:39.555569 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.34.0, running=false)
+2026/11/23 08:53:43.716225 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/23 08:54:30.332754 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/23 08:57:35.270067 [custom] glm-5.3 -> Evren LLM (anthropic glm-5.3) stream=true
+2026/11/23 08:59:28.220708 [custom] glm-5.3 failed after 112950ms: context canceled
+2026/11/23 08:59:30.321167 [catalog] native=39 custom=3
+2026/11/23 08:59:44.820248 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 09:00:03.877332 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 09:00:13.819150 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 09:00:48.560599 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 09:04:32.047525 [catalog] native=39 custom=3
+2026/11/23 09:05:22.138459 hook removed
+2026/11/23 16:51:34.080555 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/23 16:51:37.540265 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.34.0, running=false)
+2026/11/23 16:51:38.081857 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/23 16:51:42.189514 [shim] language server registered: cloudCode=https://daily-cloudcode-pa.googleapis.com apiServer=https://generativelanguage.googleapis.com inference=
+2026/11/23 16:51:43.232537 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:51:43.310301 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:51:43.611176 [catalog] native=39 custom=3
+2026/11/23 16:52:43.323503 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/23 16:52:44.232853 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:52:44.484345 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:52:44.556498 [catalog] native=39 custom=3
+2026/11/23 16:52:48.595688 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/23 16:52:49.711289 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:52:54.088506 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:52:54.465660 [catalog] native=39 custom=3
+2026/11/23 16:53:04.364790 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:53:43.289948 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/23 16:53:44.405253 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/23 16:53:44.527051 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:53:44.872483 [catalog] native=39 custom=3
+2026/11/23 16:53:44.898913 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:53:45.329626 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:53:45.485562 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/23 16:53:45.649050 [catalog] native=39 custom=3
+2026/11/23 16:54:06.065198 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:54:41.978265 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:55:09.446728 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:55:42.689021 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:55:59.384738 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:00.757996 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:08.454461 [custom] auto failed after 7696ms: HTTP 502: 上游返回了空响应
+2026/11/23 16:56:12.472101 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:17.300008 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:21.063769 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:25.428905 [custom] auto failed after 4365ms: HTTP 502: 上游返回了空响应
+2026/11/23 16:56:29.445599 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:31.345596 [custom] auto failed after 1899ms: HTTP 502: 上游返回了空响应
+2026/11/23 16:56:37.849782 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:56:43.060775 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:57:15.024931 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:57:22.833419 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:57:32.077500 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:57:45.160132 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:01.355113 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:01.505503 [catalog] native=39 custom=3
+2026/11/23 16:58:06.085534 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:19.808731 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:35.351372 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:44.452864 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:58:46.453924 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:59:16.375648 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 16:59:16.911149 [catalog] native=39 custom=3
+2026/11/23 17:00:16.290813 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:01:29.231802 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:02:11.928675 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:02:14.054154 [custom] auto failed after 2125ms: context canceled
+2026/11/23 17:02:20.054840 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:03:43.016730 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:03:43.280872 [catalog] native=39 custom=3
+2026/11/23 17:03:45.636122 [custom] deepseek-v4.1-flash failed after 2619ms: HTTP 502: 上游返回了空响应
+2026/11/23 17:03:49.659331 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:03:51.788071 [custom] deepseek-v4.1-flash failed after 2128ms: HTTP 502: 上游返回了空响应
+2026/11/23 17:03:58.794534 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:04:03.990710 [custom] deepseek-v4.1-flash failed after 5196ms: HTTP 502: 上游返回了空响应
+2026/11/23 17:04:12.254228 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:04:17.973207 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:04:19.432469 [custom] deepseek-v4.1-flash failed after 1459ms: HTTP 502: 上游返回了空响应
+2026/11/23 17:04:26.778926 [catalog] native=39 custom=3
+2026/11/23 17:04:29.640799 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:04:44.843234 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:05:05.050663 [custom] deepseek-v4.1-flash failed after 20207ms: HTTP 502: 上游返回了空响应
+2026/11/23 17:05:47.611832 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:05:59.624677 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/23 17:06:16.571195 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/23 17:07:31.516410 [custom] auto failed after 74945ms: context canceled
+2026/11/23 17:07:33.840820 [custom] deepseek-v4.1-flash failed after 94216ms: context canceled
+2026/11/24 08:34:09.573521 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/24 09:30:59.230105 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.34.0, running=false)
+2026/11/24 09:30:59.897736 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/24 09:31:06.441860 [shim] language server registered: cloudCode=https://daily-cloudcode-pa.googleapis.com apiServer=https://generativelanguage.googleapis.com inference=
+2026/11/24 09:31:07.572779 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:31:08.232944 [catalog] native=42 custom=3
+2026/11/24 09:33:44.614362 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:34:39.084291 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:36:45.318819 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 09:36:46.285101 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:36:46.516401 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:36:46.745498 [catalog] native=42 custom=3
+2026/11/24 09:37:07.080622 [catalog] native=42 custom=3
+2026/11/24 09:37:10.418940 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:37:20.430353 [custom] auto failed after 161365ms: context canceled
+2026/11/24 09:37:53.026183 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 09:37:53.892100 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:37:54.220860 [catalog] native=42 custom=3
+2026/11/24 09:38:24.645799 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:38:35.024075 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:38:45.342463 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:38:58.320083 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:39:05.317692 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:39:08.593983 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:39:41.329341 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:39:49.449199 [custom] deepseek-v4.1-flash failed after 8120ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:39:53.489358 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:40:02.247189 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:40:05.272233 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 09:40:06.126303 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:40:06.342472 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:40:06.452256 [catalog] native=42 custom=3
+2026/11/24 09:40:07.114532 [custom] deepseek-v4.1-flash failed after 4867ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:40:11.063918 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 09:40:11.172515 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:40:11.981585 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 09:40:12.453769 [catalog] native=42 custom=3
+2026/11/24 09:40:16.440567 [custom] deepseek-v4.1-flash failed after 5268ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:40:21.805872 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:40:26.132580 [custom] deepseek-v4.1-flash failed after 4327ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:40:37.525577 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:40:40.456522 [custom] deepseek-v4.1-flash failed after 2931ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:41:01.402573 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:41:17.679107 [custom] deepseek-v4.1-flash failed after 16278ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:42:12.835409 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:42:13.252817 [catalog] native=42 custom=3
+2026/11/24 09:42:17.094998 [custom] deepseek-v4.1-flash failed after 4259ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:43:39.368704 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:43:46.770587 [custom] deepseek-v4.1-flash failed after 7402ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:43:53.497837 [catalog] native=42 custom=3
+2026/11/24 09:45:57.452981 [catalog] native=42 custom=3
+2026/11/24 09:46:10.699774 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:01.858062 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:20.258172 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:20.258784 [catalog] native=42 custom=3
+2026/11/24 09:47:20.446179 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:26.118359 [custom] deepseek-v4.1-flash failed after 5672ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:47:30.171497 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:56.187174 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:47:56.221698 [custom] deepseek-v4.1-flash failed after 26052ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:47:59.688509 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:48:01.395952 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:48:09.415578 [custom] deepseek-v4.1-flash failed after 8020ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:48:19.888578 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:48:24.749448 [custom] deepseek-v4.1-flash failed after 4861ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:48:53.278698 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:49:01.164106 [custom] deepseek-v4.1-flash failed after 7886ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:49:35.299765 [catalog] native=42 custom=3
+2026/11/24 09:49:40.290746 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:49:51.119881 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:49:56.062393 [custom] deepseek-v4.1-flash failed after 225381ms: context canceled
+2026/11/24 09:49:58.929117 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:50:19.396001 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:50:54.061284 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:51:11.712756 [catalog] native=42 custom=3
+2026/11/24 09:51:19.951884 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:51:33.228417 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:51:47.662556 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:52:46.006384 [catalog] native=42 custom=3
+2026/11/24 09:52:46.518389 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:54:53.432833 [catalog] native=42 custom=3
+2026/11/24 09:56:00.693418 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:13.115608 [catalog] native=42 custom=3
+2026/11/24 09:56:13.157011 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:15.713321 [custom] deepseek-v4.1-flash failed after 2556ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:56:19.735970 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:29.019391 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:30.467913 [custom] deepseek-v4.1-flash failed after 1448ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:56:34.490287 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:36.359065 [custom] deepseek-v4.1-flash failed after 1868ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:56:43.618544 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:56:47.782965 [custom] deepseek-v4.1-flash failed after 4164ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:56:58.442430 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:57:02.706745 [custom] deepseek-v4.1-flash failed after 4264ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:57:19.678977 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/24 09:57:33.092308 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:57:36.010137 [custom] deepseek-v4.1-flash failed after 2918ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:58:33.081136 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 09:58:36.550609 [custom] deepseek-v4.1-flash failed after 3469ms: HTTP 502: 上游返回了空响应
+2026/11/24 09:58:45.760585 [catalog] native=42 custom=3
+2026/11/24 09:59:59.651124 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 10:00:03.775756 [custom] deepseek-v4.1-flash failed after 4124ms: HTTP 502: 上游返回了空响应
+2026/11/24 10:00:53.457900 [catalog] native=42 custom=3
+2026/11/24 10:02:11.647996 [catalog] native=42 custom=3
+2026/11/24 10:21:19.538835 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/24 10:21:19.782614 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 10:21:23.993118 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 10:21:24.004134 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 10:21:25.747706 [catalog] native=42 custom=3
+2026/11/24 10:21:29.399734 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 10:21:34.911625 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 10:21:35.414500 [catalog] native=42 custom=3
+2026/11/24 12:03:05.238627 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/24 12:03:06.205258 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 12:03:06.257492 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/24 12:03:06.647132 [catalog] native=42 custom=3
+2026/11/24 12:08:39.691755 [catalog] native=42 custom=3
+2026/11/24 12:14:00.218659 [catalog] native=42 custom=3
+2026/11/24 12:14:04.903044 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:16:41.819284 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:16:56.478108 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:17:42.776712 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:19:06.068375 [catalog] native=42 custom=3
+2026/11/24 12:20:17.633687 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:20:23.489502 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:20:26.737976 [custom] deepseek-v4.1-flash failed after 3248ms: HTTP 502: 上游返回了空响应
+2026/11/24 12:20:30.754809 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:25:05.717535 [catalog] native=42 custom=3
+2026/11/24 12:27:58.833614 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:28:03.896204 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:28:13.979994 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:28:21.065490 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:28:23.955826 [custom] deepseek-v4.1-flash failed after 2890ms: HTTP 502: 上游返回了空响应
+2026/11/24 12:28:27.973344 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:28:31.798413 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/24 12:31:05.902157 [catalog] native=42 custom=3
+2026/11/25 08:35:09.550654 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/25 08:43:10.624178 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:43:16.757178 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:43:16.900503 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:43:17.252698 [catalog] native=41 custom=3
+2026/11/25 08:43:43.153322 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:43:44.623211 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:43:44.926922 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:43:45.217748 [catalog] native=41 custom=3
+2026/11/25 08:44:10.301683 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:44:11.745895 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:44:11.914261 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:44:12.187557 [catalog] upstream error: Post "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels": context canceled
+2026/11/25 08:44:14.829839 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:44:16.483926 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:44:16.916189 [catalog] native=41 custom=3
+2026/11/25 08:44:23.243213 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:44:24.800886 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:44:25.019279 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:44:25.249309 [catalog] native=41 custom=3
+2026/11/25 08:44:47.791718 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/25 08:45:01.815179 [custom] deepseek-v4.1-flash -> Evren LLM (anthropic deepseek-v4.1-flash) stream=true
+2026/11/25 08:45:46.912392 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 08:45:48.490014 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:45:48.677257 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 08:45:48.958251 [catalog] native=41 custom=3
+2026/11/25 08:48:42.503471 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:49:10.621883 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:49:26.959973 [catalog] native=41 custom=3
+2026/11/25 08:49:32.047888 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:49:47.018122 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:50:05.969878 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:50:24.007528 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 08:50:24.280698 [custom] auto failed after 273ms: context canceled
+2026/11/25 09:03:50.191674 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/25 09:17:57.657418 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.35.1, running=false)
+2026/11/25 14:26:24.361897 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 14:26:26.727202 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:26:27.223918 [catalog] native=41 custom=3
+2026/11/25 14:26:39.900718 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 14:26:41.450735 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:26:41.783685 [catalog] native=41 custom=3
+2026/11/25 14:26:41.801959 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:26:59.445872 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 14:27:01.005684 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:27:01.160866 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:27:01.331426 [catalog] native=41 custom=3
+2026/11/25 14:28:15.259731 hook removed
+2026/11/25 14:30:53.778601 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/25 14:30:57.576764 hook installed into C:\Users\BT\AppData\Local\Programs\antigravity (Antigravity 2.35.1, running=false)
+2026/11/25 14:30:58.006539 hub hook installed into C:\Users\BT\.gemini\bin
+2026/11/25 14:31:14.428320 [shim] language server registered: cloudCode= apiServer= inference=
+2026/11/25 14:31:18.544368 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:31:18.961191 [catalog] native=41 custom=3
+2026/11/25 14:31:43.790129 [tier] account routed to https://daily-cloudcode-pa.googleapis.com
+2026/11/25 14:31:44.266785 [catalog] native=41 custom=3
+2026/11/25 14:31:57.583901 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:32:11.080319 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:32:30.374161 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:32:44.018261 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:33:06.045373 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:33:17.278626 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:33:26.799767 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:34:12.009473 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:34:25.855996 [custom] auto -> Evren LLM (anthropic auto) stream=true
+2026/11/25 14:37:43.581293 [catalog] native=41 custom=3
+2026/11/25 14:43:49.123907 hook removed
+2026/11/25 16:48:58.099007 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+2026/11/26 08:33:34.435684 agbridge 0.2.2-tr listening on 127.0.0.1:50998 (config C:\Users\BT\AppData\Roaming\agbridge\config.json)
+Yapılandırma: C:\Users\BT\AppData\Roaming\agbridge\config.json Günlük: C:\Users\BT\AppData\Roaming\agbridge\agbridge.log

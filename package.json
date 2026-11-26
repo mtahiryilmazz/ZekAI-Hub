@@ -1,0 +1,14 @@
+{
+  "name": "zekai-hub",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Static build complete'",
+    "lint": "echo 'OK'"
+  },
+  "dependencies": {
+    "@google/genai": "^3.6.1",
+    "express": "^4.19.2"
+  }
+}

@@ -810,9 +810,13 @@
   <div class="modal-box" style="width:min(640px,92vw)">
     <header>
       <h2 id="sTitle">Bağlantı ayarları</h2>
+      <div style="display:flex;gap:4px;margin-left:auto">
+        <button class="vbtn on" id="sTabGen" type="button">Genel</button>
+        <button class="vbtn" id="sTabPool" type="button">Model Havuzu</button>
+      </div>
       <button class="x" id="sClose" aria-label="Kapat">✕</button>
     </header>
-    <div class="setgrid">
+    <div class="setgrid" id="sGenTab">
       <div class="wide provgrid" id="provGrid"></div>
       <label>Sağlayıcı
         <select id="sProvider">
@@ -823,7 +827,10 @@
         </select>
       </label>
       <label>Model
-        <input id="sModel" list="modelList" placeholder="gpt-4o-mini" />
+        <span style="display:flex;gap:6px;align-items:center">
+          <input id="sModel" list="modelList" placeholder="gpt-4o-mini" style="flex:1" />
+          <button class="mini" id="sRefreshModels" type="button" title="Base URL üzerinden güncel modelleri yenile">↻ Yenile</button>
+        </span>
       </label>
       <datalist id="modelList"></datalist>
       <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -853,6 +860,18 @@
         tarayıcıya geri döndürülmez ve repoya girmez. Google için model: <code>gemini-3.5-flash</code>;
         OpenAI-uyumlu uçlar için base URL <code>.../v1</code>. Üretimde Secret Vault / OS keychain kullanılmalıdır.
         <br />Mevcut durum: <b id="sStatus">—</b>
+      </div>
+    </div>
+    <div class="setgrid" id="sPoolTab" hidden style="max-height:480px;overflow:auto">
+      <div class="wide" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;color:var(--text)">Aktif Sağlayıcı Destekli Model Havuzu</span>
+        <button class="mini" id="sPoolFetch" type="button">↻ Modelleri Canlı Çek</button>
+      </div>
+      <div class="wide">
+        <input id="sPoolSearch" placeholder="Model ara (örn. gpt, claude, gemini, deepseek)..." style="width:100%;background:#111926;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;color:var(--text);font-size:11.5px" />
+      </div>
+      <div class="wide" id="sPoolList" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+        <div style="color:var(--dim);font-size:11px;padding:12px;text-align:center">Henüz model yüklenmedi. Üstteki 'Modelleri Canlı Çek' butonuna basarak sağlayıcıdan güncel modelleri listeleyin.</div>
       </div>
     </div>
     <footer>
@@ -986,19 +1005,28 @@ function applyCanvasTheme() {
 }
 
 const AGENTS = [
-  { id: "supervisor", name: "Denetçi",   role: "Orkestratör", zone: "ops",    color: "#E8B45A", letter: "D", desk: [10.4, 8.2], species: "kedi", boss: true },
-  { id: "planner",    name: "Planlayıcı",role: "Plan · Skill", zone: "plan",   color: "#6FD3C0", letter: "P", desk: [1.7, 1.8], species: "kus" },
-  { id: "researcher", name: "Araştırmacı",role:"Kaynak · MCP", zone: "plan",   color: "#6FA8FF", letter: "A", desk: [4.9, 1.8], species: "kedi" },
-  { id: "analyst",    name: "Analist",   role: "Analiz · Veri", zone: "field",  color: "#A78BFA", letter: "N", desk: [10.6, 1.8], species: "kopek" },
-  { id: "builder",    name: "Uygulayıcı",role: "Kod · Tasarım", zone: "field",  color: "#7FD48A", letter: "U", desk: [13.9, 1.8], species: "kopek" },
-  { id: "reviewer",   name: "Gözden Geçiren", role: "Doğrulama · QA", zone: "review", color: "#F08A8A", letter: "G", desk: [2.4, 8.4], species: "kus" },
+  { id: "supervisor", name: "Denetçi (CEO)", role: "Merkez Komuta", zone: "command", color: "#E8B45A", letter: "D", desk: [10.5, 7.5], model: "models/investigator.glb", boss: true },
+  { id: "planner",    name: "Planlayıcı", role: "Strateji Oda 1", zone: "plan", color: "#6FD3C0", letter: "P", desk: [2.0, 2.0], model: "models/investigator.glb" },
+  { id: "researcher", name: "Araştırmacı", role: "Araştırma Oda 2", zone: "research", color: "#6FA8FF", letter: "A", desk: [8.0, 2.0], model: "models/investigator.glb" },
+  { id: "analyst",    name: "Analist", role: "Veri Oda 3", zone: "data", color: "#A78BFA", letter: "N", desk: [14.0, 2.0], model: "models/investigator.glb" },
+  { id: "builder",    name: "Uygulayıcı", role: "Kod Oda 4", zone: "code", color: "#7FD48A", letter: "U", desk: [20.0, 2.0], model: "models/investigator.glb" },
+  { id: "reviewer",   name: "Gözden Geçiren", role: "QA Oda 5", zone: "qa", color: "#F08A8A", letter: "G", desk: [2.0, 13.0], model: "models/investigator.glb" },
+  { id: "social",     name: "Sosyal Medya", role: "Medya Oda 6", zone: "social", color: "#62E3C0", letter: "S", desk: [8.0, 13.0], model: "models/investigator.glb" },
+  { id: "seo",        name: "SEO Uzmanı", role: "SEO Oda 7", zone: "seo", color: "#38BDF8", letter: "E", desk: [14.0, 13.0], model: "models/investigator.glb" },
+  { id: "auditor",    name: "Teknik Denetçi", role: "Güvenlik Oda 8", zone: "audit", color: "#F43F5E", letter: "T", desk: [20.0, 13.0], model: "models/investigator.glb" },
+  { id: "intelligence", name: "Pazar İstihbarat", role: "İstihbarat", zone: "intel", color: "#8B5CF6", letter: "I", desk: [10.5, 13.0], model: "models/investigator.glb" },
 ];
 
 const ZONES = [
-  { id: "plan",   label: "PLANLAMA",   x: 0.5, y: 0.5, w: 7.9, h: 6.0, tint: "rgba(111,211,192,0.07)", line: "rgba(111,211,192,0.30)" },
-  { id: "field",  label: "SAHA",       x: 9.6, y: 0.5, w: 7.9, h: 6.0, tint: "rgba(111,168,255,0.07)", line: "rgba(111,168,255,0.30)" },
-  { id: "review", label: "İNCELEME",   x: 0.5, y: 7.5, w: 7.9, h: 6.0, tint: "rgba(167,139,250,0.07)", line: "rgba(167,139,250,0.30)" },
-  { id: "ops",    label: "OPERASYON",  x: 9.6, y: 7.5, w: 7.9, h: 6.0, tint: "rgba(232,180,90,0.07)", line: "rgba(232,180,90,0.30)" },
+  { id: "command", label: "MERKEZ KOMUTA", x: 9.0, y: 6.0, w: 6.0, h: 5.0, tint: "rgba(232,180,90,0.08)", line: "rgba(232,180,90,0.35)" },
+  { id: "plan",    label: "STRATEJİ & PLAN", x: 0.5, y: 0.5, w: 5.4, h: 5.2, tint: "rgba(111,211,192,0.06)", line: "rgba(111,211,192,0.25)" },
+  { id: "research",label: "ARAŞTIRMA", x: 6.3, y: 0.5, w: 5.4, h: 5.2, tint: "rgba(111,168,255,0.06)", line: "rgba(111,168,255,0.25)" },
+  { id: "data",    label: "VERİ ANALİZİ", x: 12.1, y: 0.5, w: 5.4, h: 5.2, tint: "rgba(167,139,250,0.06)", line: "rgba(167,139,250,0.25)" },
+  { id: "code",    label: "MİMARİ & KOD", x: 17.9, y: 0.5, w: 5.4, h: 5.2, tint: "rgba(127,212,138,0.06)", line: "rgba(127,212,138,0.25)" },
+  { id: "qa",      label: "KALİTE & QA", x: 0.5, y: 11.5, w: 5.4, h: 5.2, tint: "rgba(240,138,138,0.06)", line: "rgba(240,138,138,0.25)" },
+  { id: "social",  label: "SOSYAL MEDYA", x: 6.3, y: 11.5, w: 5.4, h: 5.2, tint: "rgba(98,227,192,0.06)", line: "rgba(98,227,192,0.25)" },
+  { id: "seo",     label: "SEO & BÜYÜME", x: 12.1, y: 11.5, w: 5.4, h: 5.2, tint: "rgba(56,189,248,0.06)", line: "rgba(56,189,248,0.25)" },
+  { id: "audit",   label: "GÜVENLİK DENETİM", x: 17.9, y: 11.5, w: 5.4, h: 5.2, tint: "rgba(244,63,94,0.06)", line: "rgba(244,63,94,0.25)" },
 ];
 
 const PIPELINE = ["Anla", "Planla", "Yürüt", "Doğrula", "Teslim"];
@@ -3008,7 +3036,13 @@ function applyProvider(id, keepBase = false) {
   if (!keepBase) base.value = "";
   base.placeholder = p && p.needs_base
     ? "uç nokta gerekli (https://.../v1)"
-    : (p && p.base ? p.base : "https://.../v1");
+    : (p && (p.base || p.baseUrl) ? (p.base || p.baseUrl) : "https://.../v1");
+  
+  if (p && !keepBase) {
+    const defaultModels = p.models || [];
+    document.getElementById("sModel").value = defaultModels[0] || "";
+    renderModelList(defaultModels);
+  }
   document.querySelectorAll("#provGrid .prov").forEach((c) => c.classList.toggle("on", c.dataset.id === id));
 }
 
@@ -3016,7 +3050,10 @@ function customModels() {
   try { return JSON.parse(localStorage.getItem("zk_models") || "[]"); } catch (e) { return []; }
 }
 
+let lastFetchedModels = [];
+
 function renderModelList(remote = []) {
+  lastFetchedModels = remote;
   const dl = document.getElementById("modelList");
   if (!dl) return;
   dl.textContent = "";
@@ -3024,6 +3061,56 @@ function renderModelList(remote = []) {
     const o = document.createElement("option");
     o.value = m;
     dl.appendChild(o);
+  }
+}
+
+function switchSettingsTab(tab) {
+  const isGen = tab === "gen";
+  document.getElementById("sGenTab").hidden = !isGen;
+  document.getElementById("sPoolTab").hidden = isGen;
+  document.getElementById("sTabGen").classList.toggle("on", isGen);
+  document.getElementById("sTabPool").classList.toggle("on", !isGen);
+  if (!isGen) renderModelPoolList();
+}
+
+function renderModelPoolList(filter = "") {
+  const container = document.getElementById("sPoolList");
+  if (!container) return;
+  container.textContent = "";
+  const allModels = [...new Set([...customModels(), ...lastFetchedModels])];
+  const q = filter.toLowerCase();
+  const filtered = allModels.filter(m => m.toLowerCase().includes(q));
+
+  if (!filtered.length) {
+    const empty = document.createElement("div");
+    empty.style.cssText = "color:var(--dim);font-size:11px;padding:12px;text-align:center";
+    empty.textContent = "Henüz model yüklenmedi veya arama sonucu bulunamadı. Üstteki 'Modelleri Canlı Çek' butonunu kullanın.";
+    container.appendChild(empty);
+    return;
+  }
+
+  for (const m of filtered) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:8px";
+    
+    const left = document.createElement("div");
+    left.style.cssText = "display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--text)";
+    left.textContent = m;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mini yes";
+    btn.textContent = "Model Olarak Seç";
+    btn.addEventListener("click", () => {
+      document.getElementById("sModel").value = m;
+      switchSettingsTab("gen");
+      document.getElementById("sModelOut").textContent = "✓ Seçildi: " + m;
+      document.getElementById("sModelOut").style.color = "var(--teal)";
+    });
+
+    row.appendChild(left);
+    row.appendChild(btn);
+    container.appendChild(row);
   }
 }
 
@@ -3039,6 +3126,40 @@ async function loadProviderModels() {
     renderModelList(d.models || []);
     out.textContent = "✓ " + (d.models || []).length + " model · " + d.provider;
     out.style.color = "var(--teal)";
+  } catch (e) {
+    out.textContent = "✗ " + (e.message || e);
+    out.style.color = "var(--rose)";
+  }
+}
+
+async function fetchModelsFromBaseUrl() {
+  const out = document.getElementById("sModelOut");
+  const baseUrl = (document.getElementById("sBase").value || "").trim();
+  const apiKey = (document.getElementById("sKey").value || "").trim();
+  if (!baseUrl) {
+    out.textContent = "✗ Önce Base URL girin";
+    out.style.color = "var(--rose)";
+    return;
+  }
+  out.textContent = "modeller çekiliyor…";
+  out.style.color = "var(--dim)";
+  try {
+    const res = await fetch("/api/models/fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ baseUrl, apiKey })
+    });
+    const data = await res.json();
+    if (data.success && data.models) {
+      renderModelList(data.models);
+      const list = [...new Set([...customModels(), ...data.models])].slice(-50);
+      localStorage.setItem("zk_models", JSON.stringify(list));
+      out.textContent = "✓ " + data.models.length + " model yüklendi";
+      out.style.color = "var(--teal)";
+    } else {
+      out.textContent = "✗ " + (data.error || "Model listesi alınamadı");
+      out.style.color = "var(--rose)";
+    }
   } catch (e) {
     out.textContent = "✗ " + (e.message || e);
     out.style.color = "var(--rose)";
@@ -3874,6 +3995,15 @@ window.addEventListener("zk-webgl-lost", () => {
   disposeOffice();
   officeError("WebGL bağlamı kayboldu");
 });
+document.getElementById("sTabGen").addEventListener("click", () => switchSettingsTab("gen"));
+document.getElementById("sTabPool").addEventListener("click", () => switchSettingsTab("pool"));
+document.getElementById("sPoolFetch").addEventListener("click", async () => {
+  await fetchModelsFromBaseUrl();
+  renderModelPoolList(document.getElementById("sPoolSearch").value);
+});
+document.getElementById("sPoolSearch").addEventListener("input", (e) => {
+  renderModelPoolList(e.target.value);
+});
 document.getElementById("sClose").addEventListener("click", () => openSettings(false));
 document.getElementById("sSave").addEventListener("click", () => saveSettings());
 document.getElementById("sTest").addEventListener("click", testSettings);
@@ -3902,6 +4032,8 @@ const nScaleInput = document.getElementById("nScale");
 if (nScaleInput) nScaleInput.addEventListener("input", refreshPreview);
 
 document.getElementById("sModels").addEventListener("click", loadProviderModels);
+const sRefreshBtn = document.getElementById("sRefreshModels");
+if (sRefreshBtn) sRefreshBtn.addEventListener("click", fetchModelsFromBaseUrl);
 document.getElementById("sAddModel").addEventListener("click", () => {
   const v = (document.getElementById("sModel").value || "").trim();
   if (!v) return;
